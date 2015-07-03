@@ -18,8 +18,9 @@ new(Control_pid,Box_id) ->
 		Links -> 
 			Port_pids = [ begin
 							Link_pid = lists:nth(J,Links),
-							Port_pid = spawn(?MODULE,port,[Control_pid,self(),Box_id,J,Link_pid]),
-							Link_pid ! {plugged,Port_pid,J},
+							Port_mac = main:get_mac(),
+							Port_pid = spawn(?MODULE,port,[Control_pid,self(),Box_id,Port_mac,Link_pid]),
+							Link_pid ! {plugged,Port_pid,Port_mac},
 							Port_pid
 						  end || J <- lists:seq(1,length(Links)) ],
 			box(Control_pid,Box_id,Net_dict,Port_pids)
@@ -36,30 +37,30 @@ box(Control_pid,Box_id,Net_dict,Ports) ->
 
 
 
-port(Control_pid,Box_pid, Box_id, Port_id, Link_pid) -> 
+port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid) -> 
 	receive
 		{Box_pid, quit} -> ok;
 
 		Msg={Port_from,{ping,Box_from}} -> 
-			log(Control_pid,rcv,Link_pid,Msg),
-			Link_pid ! {Port_id,{ping_resp,Box_id}},
-			port(Control_pid,Box_pid, Box_id, Port_id, Link_pid);
+			log(Control_pid,rcv,Port_mac,Msg),
+			Link_pid ! {Port_mac,{ping_resp,Box_id}},
+			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid);
 
 		Msg={Port_from, {ping_resp, Box_from}} ->
-			log(Control_pid,rcv,Link_pid,Msg),
-			port(Control_pid,Box_pid, Box_id, Port_id, Link_pid)
+			log(Control_pid,rcv,Port_mac,Msg),
+			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid)
 
 	after
-		1000 ->
-			Link_pid ! Msg={Port_id,{ping,Box_id}},
-			log(Control_pid,snd,Link_pid,Msg),
-			port(Control_pid,Box_pid, Box_id, Port_id, Link_pid)
+		100 ->
+			Link_pid ! Msg={Port_mac,{ping,Box_id}},
+			log(Control_pid,snd,Port_mac,Msg),
+			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid)
 	end.
 
 
 
 
-log(Control_pid,Type,Pid,Msg) -> Control_pid ! {Pid,Type,Msg}.
+log(Control_pid,Type,Port_mac,Msg) -> Control_pid ! {os:timestamp(),Port_mac,Type,Msg}.
 
 
 
