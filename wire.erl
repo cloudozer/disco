@@ -9,10 +9,20 @@
 
 
 new(Control_pid,Wire_id) ->
-	
 	receive
-		Ports -> 
-			Link_pids = [spawn(?MODULE,port,[Control_pid,self(),Box_id,J,lists:nth(J,Ports)]) || J <- lists:seq(1,length(Ports)) ],
-			box(Control_pid,Box_id,Net_dict,Link_pids),
-			io:format("Box: ~p started~n",[Box_id])
+		quit -> ok;
+		{plugged,Pid1,Port1} -> new(Control_pid,Wire_id,Pid1,Port1)
+	end.
+
+new(Control_pid,Wire_id,Pid1,Port1) ->
+	receive
+		quit -> ok;
+		{plugged,Pid2,Port2} -> wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2)
+	end.
+
+wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2) ->
+	receive
+		quit -> ok;
+		{Port1,Data} -> Pid2 ! {Port1,Data}, wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2); 
+		{Port2,Data} -> Pid1 ! {Port2,Data}, wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2)
 	end.
