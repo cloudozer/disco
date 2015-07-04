@@ -17,12 +17,14 @@ new(Control_pid,Box_id) ->
 	receive
 		Links -> 
 			Port_pids = [ begin
+							timer:sleep(random:uniform(200)),				
 							Link_pid = lists:nth(J,Links),
 							Port_mac = main:get_mac(),
 							Port_pid = spawn(?MODULE,port,[Control_pid,self(),Box_id,Port_mac,Link_pid]),
 							Link_pid ! {plugged,Port_pid,Port_mac},
 							Port_pid
 						  end || J <- lists:seq(1,length(Links)) ],
+			
 			box(Control_pid,Box_id,Net_dict,Port_pids)
 	end.
 

@@ -10,24 +10,45 @@
 run() ->
 	Log_pid = spawn(?MODULE,log,[ self() ]),
 
-	B1 = spawn(box,new,[Log_pid,101]),
-	B2 = spawn(box,new,[Log_pid,102]),
-	B3 = spawn(box,new,[Log_pid,103]),
+	Box_ids = [101,102,103],
+	Wire_ids = [1,2],
+	Network = [{1,101,102},{2,102,103}],  %% format: {Wire,Box1,Box2}
+	make_dot("network_topology.dot",Network),
+	
+	Boxes = spawn_boxes(Log_pid,Box_ids),
+	Wires = spawn_wires(Log_pid,Wire_ids),
+	Box_wires_dict = wire_boxes(Network),
 
-	L1 = spawn(wire,new,[Log_pid,1]),
-	L2 = spawn(wire,new,[Log_pid,2]),
-
-	%% B1 - L1 - B2 - L2 - B3
-	B1 ! [L1],
-	B2 ! [L1,L2],
-	B3 ! [L2],
-
+	lists:foreach(fun(Box) ->
+		Wire_list = dict:fetch(Box,Box_wires_dict),
+		{Box,Box_pid} = lists:keyfind(Box,1,Boxes),
+		Wire_pids = [ begin {W,Wire_pid} = lists:keyfind(W,1,Wires), Wire_pid end || W <- Wire_list ],
+		Box_pid ! Wire_pids
+				  end, dict:fetch_keys(Box_wires_dict)),
+	
 	receive
 		Log -> 
-			[ Pid ! quit || Pid <- [B1,B2,B3,L1,L2] ],
+			[ Pid ! quit || Pid <- [B||{_,B}<-Boxes]++[W||{_,W}<-Wires] ],
 			Log
 	end.
 
+
+
+
+wire_boxes(Network) -> find_wires(Network,dict:new()).
+
+find_wires([{W,B1,B2}|Ls],Dict) ->
+	find_wires(Ls,dict:append(B2,W,dict:append(B1,W,Dict)));
+find_wires([],Dict) ->
+	io:format("Network:~p~n",[ [{K,dict:fetch(K,Dict)} || K<-dict:fetch_keys(Dict)] ]),
+	Dict.
+
+
+spawn_boxes(Log_pid,Ls) -> lists:foldl(fun(ID,Acc)-> [{ID,spawn(box,new,[Log_pid,ID])}|Acc] 
+								end,[],Ls).
+
+spawn_wires(Log_pid,Ls) -> lists:foldl(fun(ID,Acc)-> [{ID,spawn(wire,new,[Log_pid,ID])}|Acc] 
+								end,[],Ls).
 
 
 log(Pid) -> log(Pid,[]).
@@ -45,4 +66,19 @@ log(Pid,Log) ->
 
 get_mac() -> crypto:strong_rand_bytes(6).
 	
+
+make_dot(File,Network) ->
+	{ok,Dev} = file:open(File,write),
+
+	io:format(Dev,"graph Network {~n\tnode [shape=box,color=\".8 .5 0.8\"];~n",[]),
+
+	lists:foreach(  fun({W,B1,B2}) ->
+		io:format(Dev,"\t~p -- ~p [label=~p];~n",[B1,B2,W])
+					end, Network),
+
+	io:format(Dev,"}~n",[]),
+	file:close(Dev).
+
+
+
 
