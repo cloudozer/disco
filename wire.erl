@@ -23,12 +23,13 @@ new(Control_pid,Wire_id,Pid1,Port1) ->
 wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2) ->
 	receive
 		quit -> ok;
-		{Port1,Data} -> 
-			Pid2 ! {Port1,Data}, 
-			%io:format("Wire got message: ~p~n",[{Port1,Data}]),
+		Msg={Dest,Port1,_,_} when Dest =:= Port2; Dest =:= <<"FFFFFF">> -> 
+			Pid2 ! Msg, 
 			wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2); 
-		{Port2,Data} -> 
-			Pid1 ! {Port2,Data}, 
-			%io:format("Wire got message: ~p~n",[{Port2,Data}]),
+		Msg={Dest,Port2,_,_} when Dest =:= Port1; Dest =:= <<"FFFFFF">> -> 
+			Pid1 ! Msg, 
+			wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2); 
+		Msg -> 
+			io:format("Wire: ~p drops packet: ~p~n",[Wire_id, Msg]),
 			wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2)
 	end.

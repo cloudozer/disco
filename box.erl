@@ -17,7 +17,7 @@ new(Control_pid,Box_id) ->
 	receive
 		Links -> 
 			Port_pids = [ begin
-							timer:sleep(random:uniform(200)),				
+							timer:sleep(random:uniform(100)),				
 							Link_pid = lists:nth(J,Links),
 							Port_mac = main:get_mac(),
 							Port_pid = spawn(?MODULE,port,[Control_pid,self(),Box_id,Port_mac,Link_pid]),
@@ -43,18 +43,19 @@ port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid) ->
 	receive
 		{Box_pid, quit} -> ok;
 
-		Msg={Port_from,{ping,Box_from}} -> 
+		Msg={Dest,Source,EthType,ping} ->
 			log(Control_pid,rcv,Port_mac,Msg),
-			Link_pid ! {Port_mac,{ping_resp,Box_id}},
+			Link_pid ! {Source,Port_mac,EthType,ping_resp},
 			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid);
 
-		Msg={Port_from, {ping_resp, Box_from}} ->
+
+		Msg={Dest,Source,EthType,ping_resp} ->
 			log(Control_pid,rcv,Port_mac,Msg),
 			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid)
 
 	after
 		100 ->
-			Link_pid ! Msg={Port_mac,{ping,Box_id}},
+			Link_pid ! Msg={<<"FFFFFF">>,Port_mac,<<"CC">>,ping},
 			log(Control_pid,snd,Port_mac,Msg),
 			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid)
 	end.

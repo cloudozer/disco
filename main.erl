@@ -23,7 +23,9 @@ run() ->
 		Wire_list = dict:fetch(Box,Box_wires_dict),
 		{Box,Box_pid} = lists:keyfind(Box,1,Boxes),
 		Wire_pids = [ begin {W,Wire_pid} = lists:keyfind(W,1,Wires), Wire_pid end || W <- Wire_list ],
-		Box_pid ! Wire_pids
+		Box_pid ! Wire_pids,
+		timer:sleep(random:uniform(50))				
+							
 				  end, dict:fetch_keys(Box_wires_dict)),
 	
 	receive
@@ -51,6 +53,7 @@ spawn_wires(Log_pid,Ls) -> lists:foldl(fun(ID,Acc)-> [{ID,spawn(wire,new,[Log_pi
 								end,[],Ls).
 
 
+
 log(Pid) -> log(Pid,[]).
 log(Pid,Log) ->
 	receive
@@ -64,8 +67,11 @@ log(Pid,Log) ->
 
 
 
+
 get_mac() -> crypto:strong_rand_bytes(6).
 	
+
+
 
 make_dot(File,Network) ->
 	{ok,Dev} = file:open(File,write),
