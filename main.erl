@@ -11,8 +11,8 @@ run() ->
 	Log_pid = spawn(?MODULE,log,[ self() ]),
 
 	Box_ids = [101,102,103],
-	Wire_ids = [1,2],
-	Network = [{1,101,102},{2,102,103}],  %% format: {Wire,Box1,Box2}
+	Wire_ids = [1,2,3],
+	Network = [{1,101,102},{2,102,103},{3,101,103}],  %% format: {Wire,Box1,Box2}
 	make_dot("network_topology.dot",Network),
 	
 	Boxes = spawn_boxes(Log_pid,Box_ids),
@@ -30,7 +30,10 @@ run() ->
 	
 	receive
 		Log -> 
-			[ Pid ! quit || Pid <- [B||{_,B}<-Boxes]++[W||{_,W}<-Wires] ],
+			[ begin 
+				Pid ! quit, 
+				timer:sleep(50) 
+			end || Pid <- [B||{_,B}<-Boxes]++[W||{_,W}<-Wires] ],
 			Log
 	end.
 
@@ -76,7 +79,7 @@ get_mac() -> crypto:strong_rand_bytes(6).
 make_dot(File,Network) ->
 	{ok,Dev} = file:open(File,write),
 
-	io:format(Dev,"graph Network {~n\tnode [shape=box,color=\".8 .5 0.8\"];~n",[]),
+	io:format(Dev,"graph Network {~n\tnode [shape=box,style=filled,color=grey];~n",[]),
 
 	lists:foreach(  fun({W,B1,B2}) ->
 		io:format(Dev,"\t~p -- ~p [label=~p];~n",[B1,B2,W])
@@ -84,7 +87,5 @@ make_dot(File,Network) ->
 
 	io:format(Dev,"}~n",[]),
 	file:close(Dev).
-
-
 
 
