@@ -10,9 +10,9 @@
 run() ->
 	Log_pid = spawn(?MODULE,log,[ self() ]),
 
-	Box_ids = [101,102,103],
-	Wire_ids = [1,2,3],
-	Network = [{1,101,102},{2,102,103},{3,101,103}],  %% format: {Wire,Box1,Box2}
+	Box_ids = [101,102,103,104],
+	Wire_ids = [1,2,3,4],
+	Network = [{1,101,102},{2,102,103},{3,101,103},{4,102,104}],  %% format: {Wire,Box1,Box2}
 	make_dot("network_topology.dot",Network),
 	
 	Boxes = spawn_boxes(Log_pid,Box_ids),

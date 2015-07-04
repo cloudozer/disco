@@ -34,7 +34,7 @@ new(Control_pid,Box_id) ->
 box(Control_pid,Box_id,Network,Ports) -> 
 	receive
 		quit -> 
-			print_box_info(Box_id,Network),
+			box_info_to_dot(Box_id,Network),
 			[ {self(),quit} || Port_pid <- Ports];
 
 		{Port_pid, ping_resp, {Dest,Source,_,{ping_resp,Source_box_id}}} -> 
@@ -89,6 +89,26 @@ print_box_info(Box_id,Network) ->
 	lists:foreach(  fun({P1,P2,B}) -> 
 		io:format("\tport ~s --//-- port ~s box: ~p~n",[port(P1),port(P2),B])
 					end,dict:fetch(Box_id,Network)).
+
+
+box_info_to_dot(Box_id,Network) ->
+	File = integer_to_list(Box_id)++".dot",
+	{ok,Dev} = file:open(File,write),
+
+	io:format(Dev,"graph ~p {~n\tnode [shape=box];~n",[Box_id]),
+	io:format(Dev,"\t~p [filled=true,color=yellow];~n",[Box_id]),
+
+	lists:foreach(  fun(B1) ->
+		Connections = dict:fetch(B1,Network),
+		lists:foreach(  fun({_,_,B2}) ->
+			io:format(Dev,"\t~p -- ~p ;~n",[B1,B2]) 
+						end,Connections)
+		
+					end, dict:fetch_keys(Network)),
+
+	io:format(Dev,"}~n",[]),
+	file:close(Dev).
+
 
 
 
