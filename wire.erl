@@ -4,32 +4,29 @@
 
 
 -module(wire).
--export([new/2
+-export([new/0, links/1
 		]).
 
 
-new(Control_pid,Wire_id) ->
-	receive
-		quit -> ok;
-		{plugged,Pid1,Port1} -> new(Control_pid,Wire_id,Pid1,Port1)
-	end.
+new() -> spawn(?MODULE,links,[dict:new()]).
 
-new(Control_pid,Wire_id,Pid1,Port1) ->
-	receive
-		quit -> ok;
-		{plugged,Pid2,Port2} -> wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2)
-	end.
 
-wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2) ->
+links(Connections) ->
 	receive
-		quit -> ok;
-		Msg={Dest,Port1,_,_} when Dest =:= Port2; Dest =:= <<"FFFFFF">> -> 
-			Pid2 ! Msg, 
-			wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2); 
-		Msg={Dest,Port2,_,_} when Dest =:= Port1; Dest =:= <<"FFFFFF">> -> 
-			Pid1 ! Msg, 
-			wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2); 
-		Msg -> 
-			io:format("Wire: ~p drops packet: ~p~n",[Wire_id, Msg]),
-			wire(Control_pid,Wire_id,Pid1,Port1,Pid2,Port2)
-	end.
+		{new_port,Port} -> 
+			links(dict:store(Port,not_connected,Connections));
+
+		{get_info,Pid} ->
+			Pid ! Connections,
+			links(Connections);
+
+		{add_wire,Port1,Port2} ->
+			not_connected = dict:fetch(Port1,Connections),
+			not_connected = dict:fetch(Port2,Connections),
+			links(dict:store(Port2,Port1,dict:store(Port1,Port2,Connections)));
+
+		_ ->
+			links(Connections)
+	end.	
+
+

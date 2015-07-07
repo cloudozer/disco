@@ -7,7 +7,9 @@
 -export([new/2,
 		port/5,
 		box/4,
-		port/1
+		port/1,
+		get_mac/0,
+		make_dot/2
 		]).
 
 
@@ -39,6 +41,20 @@ box(Control_pid,Box_id,Network,Ports) ->
 
 		{Port_pid, ping_resp, {Dest,Source,_,{ping_resp,Source_box_id}}} -> 
 			% check if it is already known
+			case dict:is_key(Source_box_id,Network) of
+				true -> % check if the connection is already set. If not add it
+					Neigbors = dict:fetch(Box_id,Network),
+					case lists:keyfind(Source_box_id,3,Neigbors) of
+						{Dest,Source,Source_box_id} -> 		%% correct info
+							box(Control_pid,Box_id,Network,Ports);
+
+						{D,S,Sb} -> 						%% inconsistency - remove wrong information
+							Neighbors1 = lists:keydelete({D,S,Sb}) 
+						false->
+	
+				false-> % add connection and request new_connection box_info
+			end
+
 			Neigbors = dict:fetch(Box_id,Network),
 			case lists:keyfind(Dest,1,Neigbors) of
 				false -> 							%% was not connected before
@@ -128,5 +144,21 @@ byte_to_hex(B) ->
 
 log(Control_pid,Type,Port_mac,Msg) -> Control_pid ! {os:timestamp(),Port_mac,Type,Msg}.
 
+
+get_mac() -> crypto:strong_rand_bytes(6).
+	
+
+
+make_dot(File,Network) ->
+	{ok,Dev} = file:open(File,write),
+
+	io:format(Dev,"graph Network {~n\tnode [shape=box,style=filled,color=grey];~n",[]),
+
+	lists:foreach(  fun({W,B1,B2}) ->
+		io:format(Dev,"\t~p -- ~p [label=~p];~n",[B1,B2,W])
+					end, Network),
+
+	io:format(Dev,"}~n",[]),
+	file:close(Dev).
 
 
