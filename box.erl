@@ -4,126 +4,36 @@
 
 
 -module(box).
--export([new/2,
-		port/5,
+-export([new/3,
 		box/4,
-		port/1,
 		get_mac/0,
-		make_dot/2
+		to_dot/2
 		]).
 
 
 
-new(Control_pid,Box_id) ->
-	Network = dict:store(Box_id,[],dict:new()),
+new(Box_id,Ports_nbr,Links_pid) ->
+	Ports = [ get_mac() || _ <- lists:seq(Ports_nbr) ],
+	Box_pid = spawn(?MODULE,box,[dict:store(Box_id,[],dict:new()), dict:new(),Ports, Links_pid]),
 
+	lists:foreach(fun(P)-> Links_pid ! {new_port,P,Box_id} end, Ports),
+	Box_pid.
+
+
+
+box(Network,Links,Ports,Links_pid) ->
 	receive
-		Links -> 
-			Port_pids = [ begin
-							timer:sleep(random:uniform(100)),				
-							Link_pid = lists:nth(J,Links),
-							Port_mac = main:get_mac(),
-							Port_pid = spawn(?MODULE,port,[Control_pid,self(),Box_id,Port_mac,Link_pid]),
-							Link_pid ! {plugged,Port_pid,Port_mac},
-							Port_pid
-						  end || J <- lists:seq(1,length(Links)) ],
-			
-			box(Control_pid,Box_id,Network,Port_pids)
+		{network,Pid} ->
+			Pid ! {network,dict:to_list(Network)},
+			box(Network,Links,Ports,Links_pid);
+
+		{ports,Pid} ->
+			Pid ! {ports,Ports},
+			box(Network,Links,Ports,Links_pid);
+
+		_ -> box(Network,Links,Ports,Links_pid)
 	end.
 
-
-
-box(Control_pid,Box_id,Network,Ports) -> 
-	receive
-		quit -> 
-			box_info_to_dot(Box_id,Network),
-			[ {self(),quit} || Port_pid <- Ports];
-
-		{Port_pid, ping_resp, {Dest,Source,_,{ping_resp,Source_box_id}}} -> 
-			% check if it is already known
-			case dict:is_key(Source_box_id,Network) of
-				true -> % check if the connection is already set. If not add it
-					Neigbors = dict:fetch(Box_id,Network),
-					case lists:keyfind(Source_box_id,3,Neigbors) of
-						{Dest,Source,Source_box_id} -> 		%% correct info
-							box(Control_pid,Box_id,Network,Ports);
-
-						{D,S,Sb} -> 						%% inconsistency - remove wrong information
-							Neighbors1 = lists:keydelete({D,S,Sb}) 
-						false->
-	
-				false-> % add connection and request new_connection box_info
-			end
-
-			Neigbors = dict:fetch(Box_id,Network),
-			case lists:keyfind(Dest,1,Neigbors) of
-				false -> 							%% was not connected before
-					Network1 = dict:append(Box_id,{Dest,Source,Source_box_id},Network),
-					box(Control_pid,Box_id,Network1,Ports);
-
-				{Dest,Source,Source_box_id} ->		 	%% connection is known 
-					box(Control_pid,Box_id,Network,Ports);
-
-				{Dest,New_source,Other_box_id} ->		%% connection is new
-					Neighbors1 = lists:keydelete(Dest,1,Neigbors),
-					Network1 = dict:store(Box_id,Neighbors1,Network),
-					io:format("Connection changed~n"),
-					box(Control_pid,Box_id,Network1,Ports)
-
-			end
-	end.
-
-
-
-
-port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid) -> 
-	receive
-		{_, quit} -> ok;
-
-		Msg={_Dest,Source,EthType,{ping,Source_box_id}} ->
-			log(Control_pid,rcv,Port_mac,Msg),
-			Link_pid ! {Source,Port_mac,EthType,{ping_resp,Box_id}},  		%% send ping back
-			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid);
-
-		Msg={_Dest,_Source,_,{ping_resp,Source_box_id}} ->
-			log(Control_pid,rcv,Port_mac,Msg),
-			Box_pid ! {self(),ping_resp,Msg},							%% send msg to box to check it
-			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid)
-
-
-	after
-		100 ->
-			Link_pid ! Msg={<<"FFFFFF">>,Port_mac,<<"CC">>,{ping,Box_id}},
-			log(Control_pid,snd,Port_mac,Msg),
-			port(Control_pid,Box_pid, Box_id, Port_mac, Link_pid)
-	end.
-
-
-
-print_box_info(Box_id,Network) ->
-	io:format("Box ~p info:~n",[Box_id]),
-	lists:foreach(  fun({P1,P2,B}) -> 
-		io:format("\tport ~s --//-- port ~s box: ~p~n",[port(P1),port(P2),B])
-					end,dict:fetch(Box_id,Network)).
-
-
-box_info_to_dot(Box_id,Network) ->
-	File = integer_to_list(Box_id)++".dot",
-	{ok,Dev} = file:open(File,write),
-
-	io:format(Dev,"graph ~p {~n\tnode [shape=box];~n",[Box_id]),
-	io:format(Dev,"\t~p [filled=true,color=yellow];~n",[Box_id]),
-
-	lists:foreach(  fun(B1) ->
-		Connections = dict:fetch(B1,Network),
-		lists:foreach(  fun({_,_,B2}) ->
-			io:format(Dev,"\t~p -- ~p ;~n",[B1,B2]) 
-						end,Connections)
-		
-					end, dict:fetch_keys(Network)),
-
-	io:format(Dev,"}~n",[]),
-	file:close(Dev).
 
 
 
@@ -142,14 +52,12 @@ byte_to_hex(B) ->
 	end.
 
 
-log(Control_pid,Type,Port_mac,Msg) -> Control_pid ! {os:timestamp(),Port_mac,Type,Msg}.
-
 
 get_mac() -> crypto:strong_rand_bytes(6).
 	
 
 
-make_dot(File,Network) ->
+to_dot(File,Network) ->
 	{ok,Dev} = file:open(File,write),
 
 	io:format(Dev,"graph Network {~n\tnode [shape=box,style=filled,color=grey];~n",[]),
