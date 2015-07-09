@@ -13,11 +13,22 @@ new() -> spawn(?MODULE,links,[dict:new()]).
 
 links(Connections) ->
 	receive
+		{pkt_in,Port,Pkt} -> 
+			% check if port is wired.
+			case dict:fetch(Port,Connections) of
+				{not_connected,_} -> ok; % drop the packet
+					
+				{Port2,Box2_pid} ->
+					Box2_pid ! {pkt,Port2,nd,Pkt}
+			end,
+			links(Connections);
+
+
 		{new_port,Port,Box_pid} -> 
 			links(dict:store(Port,{not_connected,Box_pid},Connections));
 
 		{get_info,Pid} ->
-			Pid ! dict:to_list(Connections),
+			Pid ! {connections,dict:to_list(Connections)},
 			links(Connections);
 
 		{add_wire,Port1,Port2} ->

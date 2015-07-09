@@ -5,34 +5,49 @@
 
 -module(box).
 -export([new/3,
-		box/4,
+		box/3,
 		get_mac/0,
-		to_dot/2
+		to_dot/2,
+		port/1
 		]).
 
 
 
 new(Box_id,Ports_nbr,Links_pid) ->
-	Ports = [ get_mac() || _ <- lists:seq(Ports_nbr) ],
-	Box_pid = spawn(?MODULE,box,[dict:store(Box_id,[],dict:new()), dict:new(),Ports, Links_pid]),
+	Ports = [ get_mac() || _ <- lists:seq(1,Ports_nbr) ],
+	Box_pid = spawn(?MODULE,box,[Box_id,Ports, Links_pid]),
 
-	lists:foreach(fun(P)-> Links_pid ! {new_port,P,Box_id} end, Ports),
+	lists:foreach(fun(P)-> Links_pid ! {new_port,P,Box_pid} end, Ports),
+	Nd = spawn(nd,nd,[Box_id,Box_pid,neph:new(Box_id),Ports,Links_pid]),
+	register(Box_id,Nd),
+
 	Box_pid.
 
 
 
-box(Network,Links,Ports,Links_pid) ->
+box(Box_id,Ports,Links_pid) ->
 	receive
-		{network,Pid} ->
-			Pid ! {network,dict:to_list(Network)},
-			box(Network,Links,Ports,Links_pid);
+		%{msg_out,Port}
 
-		{ports,Pid} ->
-			Pid ! {ports,Ports},
-			box(Network,Links,Ports,Links_pid);
+		{pkt,Port,nd,Pkt} ->
+			Box_id ! {pkt,Port,Pkt}, %% send to nd process
+			box(Box_id,Ports,Links_pid);
 
-		_ -> box(Network,Links,Ports,Links_pid)
+		{pkt_out,Port,Pkt} ->
+			Links_pid ! {pkt_in,Port,Pkt},
+			box(Box_id,Ports,Links_pid);		
+
+		{network_info,Pid} ->
+			Box_id ! {network_info,Pid},
+			box(Box_id,Ports,Links_pid);
+
+		{ports_info,Pid} ->
+			Pid ! {ports_info,Ports},
+			box(Box_id,Ports,Links_pid);
+
+		_ -> box(Box_id,Ports,Links_pid)
 	end.
+
 
 
 
