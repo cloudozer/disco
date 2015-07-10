@@ -9,6 +9,7 @@
 		ask/2
 		]).
 
+-define(REQ_TIMEOUT,5000).
 
 
 t() -> ok.
@@ -18,4 +19,8 @@ t() -> ok.
 
 ask(Pid,Req_msg) ->
 	Pid ! {Req_msg, self()},
-	receive Answer -> Answer end.
+	receive 
+		Answer -> Answer 
+	after
+		?REQ_TIMEOUT -> no_response			
+	end.

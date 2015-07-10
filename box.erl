@@ -11,6 +11,9 @@
 		port/1
 		]).
 
+-define(PING_INTERVAL,30000).
+-define(PING_TIMEOUT,1000).
+
 
 
 new(Box_id,Ports_nbr,Links_pid) ->
@@ -18,36 +21,87 @@ new(Box_id,Ports_nbr,Links_pid) ->
 	Box_pid = spawn(?MODULE,box,[Box_id,Ports, Links_pid]),
 
 	lists:foreach(fun(P)-> Links_pid ! {new_port,P,Box_pid} end, Ports),
-	Nd = spawn(nd,nd,[Box_id,Box_pid,neph:new(Box_id),Ports,Links_pid]),
-	register(Box_id,Nd),
-
 	Box_pid.
 
 
 
-box(Box_id,Ports,Links_pid) ->
+box(Box_id,Ports,Links_pid) -> box(Box_id,Ports,Links_pid,neph:new(Box_id),undef,undef).
+
+box(Box_id,Ports,Links_pid,Net_data,undef,undef) ->
 	receive
 		%{msg_out,Port}
 
-		{pkt,Port,nd,Pkt} ->
-			Box_id ! {pkt,Port,Pkt}, %% send to nd process
-			box(Box_id,Ports,Links_pid);
+		{pkt,Port,{<<"FFFFFF">>,Source_port,{ping,Source_box} }} ->
+			% update your Network info and ping back
+			io:format("Port ~s of ~p got PING from ~p~n",[port(Port),Box_id,Source_box]),
+			Links_pid ! {pkt, Port, {Source_port,Port,{ping_resp,Box_id}} },
+			case neph:is_known(Source_box,Net_data) of
+				false ->
+					Net_data1 = neph:add_neighbor(Box_id,Port,Source_port,Source_box,Net_data),
+					box(Box_id,Ports,Links_pid,Net_data1,undef,undef);
+				true ->
+					box(Box_id,Ports,Links_pid,Net_data,undef,undef)
+			end;
 
-		{pkt_out,Port,Pkt} ->
-			Links_pid ! {pkt_in,Port,Pkt},
-			box(Box_id,Ports,Links_pid);		
-
-		{network_info,Pid} ->
-			Box_id ! {network_info,Pid},
-			box(Box_id,Ports,Links_pid);
+		{get_info,Pid} ->
+			Pid ! {network_info,neph:boxes(Net_data)},
+			box(Box_id,Ports,Links_pid,Net_data,undef,undef);
 
 		{ports_info,Pid} ->
 			Pid ! {ports_info,Ports},
-			box(Box_id,Ports,Links_pid);
+			box(Box_id,Ports,Links_pid,Net_data,undef,undef);
 
-		_ -> box(Box_id,Ports,Links_pid)
+		_ -> box(Box_id,Ports,Links_pid,Net_data,undef,undef)
+
+	after
+		?PING_INTERVAL div length(Ports) ->
+			[P|Tail] = Ports,
+			Links_pid ! {pkt, P, {<<"FFFFFF">>,P,{ping,Box_id}} },
+			box(Box_id,Tail++[P],Links_pid,Net_data,pinging,os:timestamp())
+
+	end;
+box(Box_id,Ports,Links_pid,Net_data,pinging,T1) ->
+	receive
+		%{msg_out,Port}
+
+		{pkt,Port,{<<"FFFFFF">>,Source_port,{ping,Source_box} }} ->
+			% update your Network info and ping back
+			io:format("Port ~s of ~p got PING from ~p~n",[port(Port),Box_id,Source_box]),
+			Links_pid ! {pkt, Port, {Source_port,Port,{ping_resp,Box_id}} },
+			case neph:is_known(Source_box,Net_data) of
+				false ->
+					Net_data1 = neph:add_neighbor(Box_id,Port,Source_port,Source_box,Net_data),
+					box(Box_id,Ports,Links_pid,Net_data1,pinging,T1);
+				true ->
+					box(Box_id,Ports,Links_pid,Net_data,pinging,T1)
+			end;
+
+		{pkt,Port,{Port,Source_port,{ping_resp,Source_box} }} ->
+			T2 = os:timestamp(),
+			io:format("Port ~s of ~p got ping back from ~p in ~pus~n",[port(Port),Box_id,Source_box,timer:now_diff(T2,T1)]),
+			case neph:is_known(Source_box,Net_data) of
+				false ->
+					Net_data1 = neph:add_neighbor(Box_id,Port,Source_port,Source_box,Net_data),
+					box(Box_id,Ports,Links_pid,Net_data1,undef,undef);
+				true ->
+					box(Box_id,Ports,Links_pid,Net_data,undef,undef)
+			end;		
+
+		{get_info,Pid} ->
+			Pid ! {network_info,neph:boxes(Net_data)},
+			box(Box_id,Ports,Links_pid,Net_data,pinging,T1);
+
+		{ports_info,Pid} ->
+			Pid ! {ports_info,Ports},
+			box(Box_id,Ports,Links_pid,Net_data,pinging,T1);
+
+		_ -> box(Box_id,Ports,Links_pid,Net_data,pinging,T1)
+
+	after
+		?PING_TIMEOUT ->
+			box(Box_id,Ports,Links_pid,Net_data,undef,undef)
+
 	end.
-
 
 
 

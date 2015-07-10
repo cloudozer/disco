@@ -10,6 +10,7 @@
 -module(neph).
 -export([new/1,size/1,
 		has_box/2,
+		boxes/1,
 		is_known/2,
 		add_neighbor/5
 		%export_to_dot/2
@@ -20,12 +21,15 @@
 new(Box) -> { dict:store(Box,[],dict:new()), dict:new()}.  % {Network,Wires,Ports}
 
 % returns size of known network
-size({Network,_,_}) -> dict:size(Network).
+size({Network,_}) -> dict:size(Network).
 
 
 % returns true/false if Graph has/has_not Node  
 has_box(Box,{Network,_}) -> dict:is_key(Box,Network).
 	
+
+% returns the list of known boxes
+boxes({Network,_}) -> dict:fetch_keys(Network).
 
 
 is_known(Box,{Network,_}) -> dict:is_key(Box,Network).
