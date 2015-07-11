@@ -11,7 +11,7 @@
 		port/1
 		]).
 
--define(PING_INTERVAL,30000).
+-define(PING_INTERVAL,20000).
 -define(PING_TIMEOUT,1000).
 
 
@@ -35,7 +35,7 @@ box(Box_id,Ports,Links_pid,Net_data,undef,undef) ->
 			% update your Network info and ping back
 			io:format("Port ~s of ~p got PING from ~p~n",[port(Port),Box_id,Source_box]),
 			Links_pid ! {pkt, Port, {Source_port,Port,{ping_resp,Box_id}} },
-			case neph:is_known(Source_box,Net_data) of
+			case neph:has_box(Source_box,Net_data) of
 				false ->
 					Net_data1 = neph:add_neighbor(Box_id,Port,Source_port,Source_box,Net_data),
 					box(Box_id,Ports,Links_pid,Net_data1,undef,undef);
@@ -68,7 +68,7 @@ box(Box_id,Ports,Links_pid,Net_data,pinging,T1) ->
 			% update your Network info and ping back
 			io:format("Port ~s of ~p got PING from ~p~n",[port(Port),Box_id,Source_box]),
 			Links_pid ! {pkt, Port, {Source_port,Port,{ping_resp,Box_id}} },
-			case neph:is_known(Source_box,Net_data) of
+			case neph:has_box(Source_box,Net_data) of
 				false ->
 					Net_data1 = neph:add_neighbor(Box_id,Port,Source_port,Source_box,Net_data),
 					box(Box_id,Ports,Links_pid,Net_data1,pinging,T1);
@@ -79,7 +79,7 @@ box(Box_id,Ports,Links_pid,Net_data,pinging,T1) ->
 		{pkt,Port,{Port,Source_port,{ping_resp,Source_box} }} ->
 			T2 = os:timestamp(),
 			io:format("Port ~s of ~p got ping back from ~p in ~pus~n",[port(Port),Box_id,Source_box,timer:now_diff(T2,T1)]),
-			case neph:is_known(Source_box,Net_data) of
+			case neph:has_box(Source_box,Net_data) of
 				false ->
 					Net_data1 = neph:add_neighbor(Box_id,Port,Source_port,Source_box,Net_data),
 					box(Box_id,Ports,Links_pid,Net_data1,undef,undef);
@@ -99,7 +99,18 @@ box(Box_id,Ports,Links_pid,Net_data,pinging,T1) ->
 
 	after
 		?PING_TIMEOUT ->
-			box(Box_id,Ports,Links_pid,Net_data,undef,undef)
+			% check if connection lost
+			P = lists:last(Ports),
+			case neph:neighbor(Box_id,P,Net_data) of
+				{Neighbor_port,Neighbor_box} ->
+					io:format("Link between ~p and ~p over ~s--~s lost~n",
+						[Box_id,Neighbor_box,port(P),port(Neighbor_port)]),
+					% Update Net_data
+					Net_data1 = neph:del_wire(Box_id,P,Neighbor_port,Neighbor_box,Net_data),
+					box(Box_id,Ports,Links_pid,Net_data1,undef,undef);
+				not_connected ->
+					box(Box_id,Ports,Links_pid,Net_data,undef,undef)
+			end
 
 	end.
 

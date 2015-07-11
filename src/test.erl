@@ -2,14 +2,13 @@
 %
 %
 
-
 -module(test).
 -export([
 		t/0,
 		ask/2
 		]).
 
--define(REQ_TIMEOUT,5000).
+-define(REQ_TIMEOUT,2000).
 
 
 t() -> ok.
