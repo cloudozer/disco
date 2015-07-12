@@ -7,10 +7,8 @@ without any network switches.
 
 # Simulator
 
-The repo contains a simulator that allows to analyze what happens in the network when 
-one computer gos down and / or one link has a connection problem.
-You may also obtain the full log of how events were created and how each computer 
-eventully discovered the whole network.
+The repo contains a simulator that allows to analyze what is happening with network when, say 
+one computer goes down and / or one link has a connection problem.
 
 
 
