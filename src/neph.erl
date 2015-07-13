@@ -12,6 +12,7 @@
 		has_box/2,
 		boxes/1,
 		neighbor/3,
+		neighbor_boxes/2,
 		neighbors/2,
 		add_neighbor/5,
 		del_wire/5
@@ -43,8 +44,11 @@ neighbor(Box_id,Port,{Network,_}) ->
 	end.
 
 
+neighbors(Box_id,{Network,_}) -> dict:fetch(Box_id,Network).
+
+
 % returns all neighbor boxes for a given box
-neighbors(Box_id,{Network,_}) ->
+neighbor_boxes(Box_id,{Network,_}) ->
 	[ B || {_,_,B} <- dict:fetch(Box_id,Network)].
 
 
@@ -60,10 +64,21 @@ del_wire(Box1,Port1,Port2,Box2,{Network,Links}) ->
 
 
 
-% returns updated Net_data after adding new box connected over given ports
+% returns updated Net_data after adding a new box connected over given ports
 add_neighbor(Box1,Port1,Port2,Box2,{Network,Links}) ->
-	Network1 = dict:append(Box2,{Port2,Port1,Box1},dict:append(Box1,{Port1,Port2,Box2},Network)),
-	Links1 = dict:append({Box2,Box1},{Port2,Port1},dict:append({Box1,Box2},{Port1,Port2},Links)),
-	{Network1,Links1}.
+	case dict:is_key(Box1,Network) of
+		true -> 
+			Net1 = dict:store(Box1,lists:usort([ {Port1,Port2,Box2} | dict:fetch(Box1,Network)]),Network);
+		false ->
+			Net1 = dict:store(Box1,[{Port1,Port2,Box2}],Network)
+	end,
+
+	case dict:is_key(Box2,Net1) of
+		true -> 
+			Net2 = dict:store(Box2,lists:usort([ {Port2,Port1,Box1} | dict:fetch(Box2,Net1)]),Net1);
+		false ->
+			Net2 = dict:store(Box2,[{Port2,Port1,Box1}],Net1)
+	end,
+	{Net2,Links}.
 
 

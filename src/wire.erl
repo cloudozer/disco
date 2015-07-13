@@ -33,9 +33,16 @@ links(Connections) ->
 			links(Connections);
 
 		{add_wire,Port1,Port2} ->
-			{not_connected,B1} = dict:fetch(Port1,Connections),
-			{not_connected,B2} = dict:fetch(Port2,Connections),
-			links(dict:store(Port2,{Port1,B2},dict:store(Port1,{Port2,B1},Connections)));
+			Res1 = dict:fetch(Port1,Connections),
+			Res2 = dict:fetch(Port2,Connections),
+
+			case {Res1,Res2} of
+				{{not_connected,B1},{not_connected,B2}} ->
+					links(dict:store(Port2,{Port1,B2},dict:store(Port1,{Port2,B1},Connections)));
+				_ ->
+					io:format("Error: one or both ports is/are already connected~n"),
+					links(Connections)
+			end;
 
 		{del_wire,Port1,Port2} ->
 			{Port2,B1} = dict:fetch(Port1,Connections),
