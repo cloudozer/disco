@@ -9,69 +9,67 @@
 		to_dot/2
 		]).
 
--define(PING_INTERVAL,30000).
-
 
 
 
 new(Box,Ports_nbr,Links_pid) ->
 	MACs = [ port:get_mac() || _ <- lists:seq(1,Ports_nbr) ],
-	Ports = [ {M,spawn(port,new, [M,Box,Links_pid]) } || M <- MACs ],
-	spawn(?MODULE,box,[Box,Ports, Links_pid]).
-
+	Bid = spawn(?MODULE,box,[Box,MACs, Links_pid]),
+	lists:foreach(  fun(M) -> spawn(port,new, [M,Box,Bid,Links_pid]) 
+					end, MACs).
+	
 
 
 
 box(Box,Ports,Links_pid) -> 
-	lists:foreach(  fun({Mac,Port_pid} -> Port_pid ! {Box,self()}
-					end,Ports),
 	box(Box,Ports,Links_pid,neph:new(Box),[]).
 
 box(Box_id,Ports,Links_pid,Net_data,Arch) ->
 	receive
-		{new_connection, My_port, Neighbor_port,Source_box } -> 
+		{new_connection, _My_port, _Neighbor_port,_Source_box } -> 
+			box(Box_id,Ports,Links_pid,Net_data,Arch);
 
-		{lost_connection, My_port} ->
+		{lost_connection, _My_port} ->
+			box(Box_id,Ports,Links_pid,Net_data,Arch);
 
-		{Port,Source_port,Msg} ->
+		{_Port,_Source_port,_Msg} ->
 			% Check that Source_port is a neighbor port connected to your Port. If not drop a message
 			% Check that neither Box1 nor Box2 is your Box. Drop otherwise
 
+			box(Box_id,Ports,Links_pid,Net_data,Arch);
 
-
-		{Port,{<<"FFFFFF">>,Source_port,<<"ND">>,{add_wire,Box1,P1,P2,Box2,TS} } } ->
-
-		{Port,{<<"FFFFFF">>,Source_port,<<"ND">>,{del_wire,Box1,P1,P2,Box2,TS} } } ->
+		%{Port,{<<"FFFFFF">>,Source_port,<<"ND">>,{add_wire,Box1,P1,P2,Box2,TS} } } ->
+		%{Port,{<<"FFFFFF">>,Source_port,<<"ND">>,{del_wire,Box1,P1,P2,Box2,TS} } } ->
 
 
 
 
 		
-		{pkt,Port,{<<"FFFFFF">>,_Source_port, {del_wire,Box1,P1,P2,Box2,TS}=Pkt} } ->
-			% check if this message has been already received
-			case lists:member(TS,Arch) of
-				true -> box(Box_id,Ports,Links_pid,Net_data,Arch);
-				false-> 
-					lists:foreach(  fun(P) -> Links_pid ! {pkt,P,{<<"FFFFFF">>,P,Pkt }}
-									end,lists:filter(fun(P)-> P=/=Port end,Ports)),
-					Net_data1 = neph:del_wire(Box1,P1,P2,Box2,Net_data),
-					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch])
-			end;
-
-		{pkt,Port,{<<"FFFFFF">>,_Source_port, {add_wire,Box1,P1,P2,Box2,TS}=Pkt} } ->
-			% check if this message has been already received
-			case lists:member(TS,Arch) of
-				true -> box(Box_id,Ports,Links_pid,Net_data,Arch);
-				false-> 
-					lists:foreach(  fun(P) -> Links_pid ! {pkt,P,{<<"FFFFFF">>,P,Pkt }}
-									end,lists:filter(fun(P)-> P=/=Port end,Ports)),
-					Net_data1 = neph:add_neighbor(Box1,P1,P2,Box2,Net_data),
-					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch])
-			end;
+%		{pkt,Port,{<<"FFFFFF">>,_Source_port, {del_wire,Box1,P1,P2,Box2,TS}=Pkt} } ->
+%			% check if this message has been already received
+%			case lists:member(TS,Arch) of
+%				true -> box(Box_id,Ports,Links_pid,Net_data,Arch);
+%				false-> 
+%					lists:foreach(  fun(P) -> Links_pid ! {pkt,P,{<<"FFFFFF">>,P,Pkt }}
+%									end,lists:filter(fun(P)-> P=/=Port end,Ports)),
+%					Net_data1 = neph:del_wire(Box1,P1,P2,Box2,Net_data),
+%					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch])
+%			end;
+%
+%		{pkt,Port,{<<"FFFFFF">>,_Source_port, {add_wire,Box1,P1,P2,Box2,TS}=Pkt} } ->
+%			% check if this message has been already received
+%			case lists:member(TS,Arch) of
+%				true -> box(Box_id,Ports,Links_pid,Net_data,Arch);
+%				false-> 
+%					lists:foreach(  fun(P) -> Links_pid ! {pkt,P,{<<"FFFFFF">>,P,Pkt }}
+%									end,lists:filter(fun(P)-> P=/=Port end,Ports)),
+%					Net_data1 = neph:add_neighbor(Box1,P1,P2,Box2,Net_data),
+%					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch])
+%			end;
 
 
 		{get_info,Pid} ->
-			Pid ! {network_info,neph:boxes(Net_data)},
+			Pid ! {network_info,neph:boxe_list(Net_data)},
 			box(Box_id,Ports,Links_pid,Net_data,Arch);
 
 		{draw_net,_} ->
@@ -83,77 +81,6 @@ box(Box_id,Ports,Links_pid,Net_data,Arch) ->
 			box(Box_id,Ports,Links_pid,Net_data,Arch);
 
 		_ -> box(Box_id,Ports,Links_pid,Net_data,Arch)
-
-	after
-		?PING_INTERVAL div length(Ports) ->
-			[P|Tail] = Ports,
-			Links_pid ! {pkt, P, {<<"FFFFFF">>,P,{ping,Box_id}} },
-			box(Box_id,Tail++[P],Links_pid,Net_data,Arch,pinging,os:timestamp())
-
-	end.
-
-%% a state when box sent a ping to its port and is waiting for the respond
-box(Box_id,Ports,Links_pid,Net_data,Arch,pinging,T1) ->  
-	receive
-		
-		
-		{pkt,Port,{<<"FFFFFF">>,_Source_port, {del_wire,Box1,P1,P2,Box2,TS}=Pkt} } ->
-			% check if this message has been already received
-			case lists:member(TS,Arch) of
-				true -> box(Box_id,Ports,Links_pid,Net_data,Arch,pinging,T1);
-				false-> 
-					lists:foreach(  fun(P) -> Links_pid ! {pkt,P,{<<"FFFFFF">>,P,Pkt }}
-									end,lists:filter(fun(P)-> P=/=Port end,Ports)),
-					Net_data1 = neph:del_wire(Box1,P1,P2,Box2,Net_data),
-					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch],pinging,T1)
-			end;
-
-		{pkt,Port,{<<"FFFFFF">>,_Source_port, {add_wire,Box1,P1,P2,Box2,TS}=Pkt} } ->
-			% check if this message has been already received
-			case lists:member(TS,Arch) of
-				true -> box(Box_id,Ports,Links_pid,Net_data,Arch,pinging,T1);
-				false-> 
-					lists:foreach(  fun(P) -> Links_pid ! {pkt,P,{<<"FFFFFF">>,P,Pkt }}
-									end,lists:filter(fun(P)-> P=/=Port end,Ports)),
-					Net_data1 = neph:add_neighbor(Box1,P1,P2,Box2,Net_data),
-					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch],pinging,T1)
-			end;
-
-
-		{get_info,Pid} ->
-			Pid ! {network_info,neph:boxes(Net_data)},
-			box(Box_id,Ports,Links_pid,Net_data,Arch,pinging,T1);
-
-		{ports_info,Pid} ->
-			Pid ! {ports_info,Ports},
-			box(Box_id,Ports,Links_pid,Net_data,Arch,pinging,T1);
-
-		{draw_net,_} ->
-			to_dot(Box_id,Net_data),
-			box(Box_id,Ports,Links_pid,Net_data,Arch,pinging,T1);
-
-		_ -> box(Box_id,Ports,Links_pid,Net_data,Arch,pinging,T1)
-
-	after
-		?PING_TIMEOUT ->
-			% check if connection lost
-			P = lists:last(Ports),
-			case neph:neighbor(Box_id,P,Net_data) of
-				{Lost_port,Lost_box} ->
-					io:format("Link between ~p and ~p over ~s--~s lost~n",[Box_id,Lost_box,port:pp(P),port:pp(Lost_port)] ),
-					% Update Net_data
-					Net_data1 = neph:del_wire(Box_id,P,Lost_port,Lost_box,Net_data),
-					% send an info_update to all its neighbors about network change
-					TS=os:timestamp(),
-					Pkt = {del_wire,Box_id,P,Lost_port,Lost_box,TS},
-
-					lists:foreach(  fun(Port) -> Links_pid ! {pkt,Port,{<<"FFFFFF">>,Port,Pkt }}
-									end,Ports),
-
-					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch]);
-				not_connected ->
-					box(Box_id,Ports,Links_pid,Net_data,Arch)
-			end
 
 	end.
 
@@ -194,7 +121,7 @@ to_dot(Box_id,Net_data) ->
 		Neibs = [ B || B <- neph:neighbor_boxes(Box,Net_data), not lists:member(B,Processed_boxes) ],
 		{[ {B,Box} || B <- Neibs]++Acc, [Box|Processed_boxes]}
 
-							end,{[],[]},neph:boxes(Net_data)),
+							end,{[],[]},neph:boxe_list(Net_data)),
 
 	io:format("Edges:~p~n",[Edges]),
 	lists:foreach(  fun({B1,B2}) ->

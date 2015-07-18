@@ -4,8 +4,7 @@
 
 
 -module(port).
--export([new/3,
-		port/5,
+-export([new/4,
 		ping/3,
 		pp/1,
 		get_mac/0
@@ -19,12 +18,10 @@
  
 
 
-new(Mac,Box,Links) ->
+new(Mac,Box,Box_pid,Links) ->
 	Links ! {new_port,Mac,self()},  % register port in Links
 	spawn(?MODULE,ping,[Mac,Box,Links]),
-	receive
-		{Box,Box_pid} -> port(disconnected,Mac,Box,Box_pid,Links)
-	end.
+	port(disconnected,Mac,Box,Box_pid,Links).
 
 
 % States:
