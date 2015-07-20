@@ -90,6 +90,24 @@ unstable connection - low number of pongs from port
 stable connection - sufficient number of pongs from port
 
 
+### Broadcasts
+
+Any box may initiate a broadcast update if a certain condition trigers this.
+A broad cast packet format is shown below:
+
+{ <<"FFFFFF">>, Source_port, ND_type, {BCM_type,TS, ...} }
+
+where: 
+BCM_type - one of possible broadcast message types;
+TS - time stamp of the message
+
+There two BCM_types:
+add_wire - a request to add a new connection between two boxes. 
+del_wire - a request to delete the given connection
+
+
+
+
 
 
 
