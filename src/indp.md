@@ -11,13 +11,10 @@ The protocol is not complete. This is an initial phase of its development.
 
 ### History of changes
 
-+---------------+-----------+---------------+-------------------+
-| Date 			| Version	| Author		| What was changed	|
-+---------------+-----------+---------------+-------------------+		
-| July 20, 2015	| 0.1 		| Ian Tsybulkin	| Draft 			|
-+---------------+-----------+---------------+-------------------+		
+| Date 			| Version	:| Author		| What was changed	|
+|---------------|-----------|---------------|-------------------|		
+| July 20, 2015	| 0.1 	:| Ian Tsybulkin	| Draft 			|
 |				|			|				|					|
-+---------------+-----------+---------------+-------------------+		
 
 ### Table of Contents
 
@@ -60,11 +57,9 @@ nd uses small ethernet packets to explore the network. It requires no other prot
 of abstraction to send or receive information to/from its neighbors. 
 The format of the packet looks as shown below:
 
-+-------------------+-------------------+-----------+----------------+
 | 6 bytes			| 6 bytes			| 2 bytes	| 10 - 30 bytes	 |
-+-------------------+-------------------+-----------+----------------+
+|-------------------|-------------------|-----------|----------------|
 | Destination_addr	| Source_addr 		| Type1		| Data 			 |
-+-------------------+-------------------+-----------+----------------+
 
 
 ### Neighbors pinging
@@ -77,6 +72,7 @@ The Erlang format of ping packet is shown below.
 
 If a box got a ping packet from one of its neighbors, it responds sending pong packet:
 
+`erlang
 {Neighbor_port, My_port, ND_type, {pong, My_box} } 
 
 
@@ -95,6 +91,7 @@ stable connection - sufficient number of pongs from port
 Any box may initiate a broadcast update if a certain condition trigers this.
 A broad cast packet format is shown below:
 
+`erlang 
 { <<"FFFFFF">>, Source_port, ND_type, {BCM_type,TS, ...} }
 
 where: 
