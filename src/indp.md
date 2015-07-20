@@ -11,9 +11,9 @@ The protocol is not complete. This is an initial phase of its development.
 
 ### History of changes
 
-| Date 			| Version	:| Author		| What was changed	|
-|---------------|-----------|---------------|-------------------|		
-| July 20, 2015	| 0.1 	:| Ian Tsybulkin	| Draft 			|
+| Date 			| Version	| Author		| What was changed	|
+|---------------|----------:|---------------|-------------------|		
+| July 20, 2015	| 0.1 		| Ian Tsybulkin	| Draft 			|
 |				|			|				|					|
 
 ### Table of Contents
@@ -58,7 +58,7 @@ of abstraction to send or receive information to/from its neighbors.
 The format of the packet looks as shown below:
 
 | 6 bytes			| 6 bytes			| 2 bytes	| 10 - 30 bytes	 |
-|-------------------|-------------------|-----------|----------------|
+|:------------------|:------------------|:----------|:---------------|
 | Destination_addr	| Source_addr 		| Type1		| Data 			 |
 
 
@@ -67,12 +67,13 @@ The format of the packet looks as shown below:
 Each box constantly pings all its neighbors sending ping packets to all its ports.
 The Erlang format of ping packet is shown below.
 
+```Erlang
 {<<"FFFFFF">>, Source_port, ND_type, {ping, Box} }
 
 
 If a box got a ping packet from one of its neighbors, it responds sending pong packet:
 
-`erlang
+```Erlang
 {Neighbor_port, My_port, ND_type, {pong, My_box} } 
 
 
@@ -91,7 +92,7 @@ stable connection - sufficient number of pongs from port
 Any box may initiate a broadcast update if a certain condition trigers this.
 A broad cast packet format is shown below:
 
-`erlang 
+```Erlang 
 { <<"FFFFFF">>, Source_port, ND_type, {BCM_type,TS, ...} }
 
 where: 
