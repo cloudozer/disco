@@ -12,9 +12,8 @@ The protocol is not complete. This is an initial phase of its development.
 ### History of changes
 
 | Date 			| Version	| Author		| What was changed	|
-|---------------|----------:|---------------|-------------------|		
+|:--------------|----------:|:--------------|:------------------|		
 | July 20, 2015	| 0.1 		| Ian Tsybulkin	| Draft 			|
-|				|			|				|					|
 
 ### Table of Contents
 
@@ -70,12 +69,15 @@ The Erlang format of ping packet is shown below.
 ```Erlang
 {<<"FFFFFF">>, Source_port, ND_type, {ping, Box} }
 
+```
+
 
 If a box got a ping packet from one of its neighbors, it responds sending pong packet:
 
 ```Erlang
 {Neighbor_port, My_port, ND_type, {pong, My_box} } 
 
+```
 
 ### State of connection
 
@@ -94,6 +96,8 @@ A broad cast packet format is shown below:
 
 ```Erlang 
 { <<"FFFFFF">>, Source_port, ND_type, {BCM_type,TS, ...} }
+
+```
 
 where: 
 BCM_type - one of possible broadcast message types;
