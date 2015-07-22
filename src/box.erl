@@ -16,7 +16,8 @@ new(Box,Ports_nbr,Links_pid) ->
 	MACs = [ port:get_mac() || _ <- lists:seq(1,Ports_nbr) ],
 	Bid = spawn(?MODULE,box,[Box,MACs, Links_pid]),
 	lists:foreach(  fun(M) -> spawn(port,new, [M,Box,Bid,Links_pid]) 
-					end, MACs).
+					end, MACs),
+	Bid.
 	
 
 
