@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head> <script src="http://d3js.org/d3.v3.min.js"></script>
+<body>
+	<script type="text/javascript">
+
+// add({data: '{"type":"add_node", "b1": "box2", "b2": "box5"}'})
+
+	// sound effect
+	var snd = new Audio("button-30.wav"); // buffers automatically when created
+
+	function box_index(box){
+		for (var i=0; i < net.boxes.length; i++){
+			if (net.boxes[i].name == box){return i;}
+			};
+		return -1;
+	};
+
+	function add(evt){
+		// msg = {type: type, box1: box_name1, box2: box_name2}
+		var msg = JSON.parse(evt.data);
+		snd.play();
+		var b1 = msg.b1;
+		var b2 = msg.b2;
+		
+		if (msg.type == 'add_node'){
+			var b2_index = net.boxes.push({"name":b2}) - 1;
+			var b1_index = box_index(b1);
+			net.wires.push({"source":b1_index,"target":b2_index});
+			
+			force.nodes(net.boxes);
+			
+			var edges = svg.selectAll("line")
+					.data(net.wires);
+
+			edges.enter()
+				.insert("line","circle")
+				.style("stroke","#777")
+				.style("stroke-width",2);
+
+			var nodes = svg.selectAll("circle")
+						.data(net.boxes);
+			
+			nodes.enter()
+				.append("circle")
+				.attr("r",20)
+				.style("fill","grey")
+				.call(force.drag);
+
+			force.on("tick", function(){
+				edges.attr("x1",function(d){return d.source.x;})
+					.attr("y1", function(d){return d.source.y;})
+					.attr("x2", function(d){return d.target.x;})
+					.attr("y2", function(d){return d.target.y;});
+				nodes.attr("cx",function(d){return d.x;})
+					.attr( "cy",function(d){return d.y;});
+			});
+			force.start();
+		}
+
+		};
+
+	
+	// message handler
+	var ws = new WebSocket("ws://localhost:8080/websocket");
+	ws.onopen = function() { ws.send("Hello, world")};
+	
+	ws.onmessage = function (evt) { 
+		alert(evt);
+		};
+
+
+	// width and height
+	var w = 800;
+	var h = 500;
+
+	// Original data
+	var net = {
+		boxes:[
+		{name:"box1"},
+		{name:"box2"},
+		{name:"box3"},
+		{name:"box4"}
+		],
+		wires:[
+		{source:0,target:1},
+		{source:1,target:2},
+		{source:2,target:3},
+		{source:1,target:3},
+		]
+	};
+
+	// set force
+	var force = d3.layout.force()
+				.nodes(net.boxes)
+				.links(net.wires)
+				.size([w,h])
+				.linkDistance(60)
+				.charge(-500)
+				.start();
+	
+	// create svg element
+	var svg = d3.select("body")
+				.append("svg")
+				.attr("width", w)
+				.attr("height", h);
+
+	// draw lines
+	var edges = svg.selectAll("line")
+					.data(net.wires)
+					.enter()
+					.append("line")
+					.style("stroke","#777")
+					.style("stroke-width",2);
+
+	var nodes = svg.selectAll("circle")
+					.data(net.boxes)
+					.enter()
+					.append("circle")
+					.attr("r",20)
+					.style("fill","#4a2")
+					.call(force.drag);				
+	snd.play();
+	
+	force.on("tick", function(){
+		edges.attr("x1",function(d){return d.source.x;})
+			.attr("y1", function(d){return d.source.y;})
+			.attr("x2", function(d){return d.target.x;})
+			.attr("y2", function(d){return d.target.y;});
+		nodes.attr("cx",function(d){return d.x;})
+			.attr( "cy",function(d){return d.y;});
+	})
+	</script>
+
+</body>
+</html>	
