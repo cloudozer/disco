@@ -23,7 +23,7 @@ First, you need to run Network discovery app using Erlang shell.
 Then you may create a several boxes - which are Erlang processes. Then you may
 decide to monitor one box or another. For that, you need to open in a broweser
 
-	`html
+	```javaScript
 	http://localhost:8080/box_name
 	```
 
@@ -40,7 +40,7 @@ between each other.
 
 ### WS sends to BOX
 
-	`Erlang
+	```erlang
 	BOX ! {monitor, self(), get_entire_network} 
 	```
 WS sends this kind of message in the beginning and when page is refreshed.
@@ -50,7 +50,7 @@ WS sends this kind of message in the beginning and when page is refreshed.
 Box send two types of messages to WS. One is the message containing the entire network
 info:
 
-	`Erlang
+	```erlang
 	WS ! {entire_net, Nodes, Links}
 	```
 
@@ -59,7 +59,7 @@ between each other. The connections are tuples {Box1, Box2}.
 
 The message that Box may send to WS looks like one of the messages below:
 
-	`Erlang
+	```erlang
 	{add_box, New_box}
 	{del_box, Box}
 	{add_wire, Box1, Box2}
