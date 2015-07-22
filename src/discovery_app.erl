@@ -20,7 +20,7 @@ start() ->
 start(_StartType, _StartArgs) ->
     Dispatch = cowboy_router:compile([
       {'_', [
-        {"/:box", cowboy_static, {file, "priv/project1.html"}},
+        {"/:box", cowboy_static, {file, "priv/monitor.html"}},
         {"/websocket/:box", ws_handler, []}
       ]}
     ]),
