@@ -67,15 +67,19 @@ Each box constantly pings all its neighbors sending ping packets to all its port
 The Erlang format of ping packet is shown below.
 
 ```Erlang
-{<<"FFFFFF">>, Source_port, ND_type, {ping, Box} }
+{<<"FFFFFF">>, Source_port, ND_type, {ping, Box, TS} }
 
 ```
 
 
-If a box got a ping packet from one of its neighbors, it responds sending pong packet:
+If a box got a ping packet from one of its neighbors, it responds sending pong packet back.
+Pong message contains the same TS as it was in the ping packet while substituting its own 
+name in the My_box field. TS is a time stamp, so the box that sent ping can measure time of
+round trip of ping packet.
+
 
 ```Erlang
-{Neighbor_port, My_port, ND_type, {pong, My_box} } 
+{Neighbor_port, My_port, ND_type, {pong, My_box, TS} } 
 
 ```
 
@@ -84,9 +88,12 @@ If a box got a ping packet from one of its neighbors, it responds sending pong p
 Any box evaluates the state of each of its connections. A connection can be in one of three
 states:
 
-disconnected - no pongs from port
-unstable connection - low number of pongs from port
-stable connection - sufficient number of pongs from port
+	disconnected - no pongs from port
+
+	unstable connection - low number of pongs from port
+
+	stable connection - sufficient number of pongs from port
+
 
 
 ### Broadcasts
