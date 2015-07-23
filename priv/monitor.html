@@ -27,15 +27,15 @@
 					.data(net.wires)
 					.enter()
 					.append("line")
-					.style("stroke","#777")
-					.style("stroke-width",2);
+					.style("stroke","grey")
+					.style("stroke-width",3);
 
 	var nodes = svg.selectAll("circle")
 					.data(net.boxes)
 					.enter()
 					.append("circle")
 					.attr("r",20)
-					.style("fill","#4a2")
+					.style("fill","green")
 					.call(force.drag);				
 		
 	// sound effect
@@ -44,6 +44,17 @@
 	function box_index(box){
 		for (var i=0; i < net.boxes.length; i++){
 			if (net.boxes[i].name == box){return i;}
+			};
+		return -1;
+	};
+
+	function edge_index(wire){
+		var b1 = wire.source;
+		var b2 = wire.target;
+			
+		for (var i=0; i < net.wires.length; i++){
+			if (net.wires[i].source.index == b1 && net.wires[i].target.index == b2){return i;}
+			if (net.wires[i].source.index == b2 && net.wires[i].target.index == b1){return i;}
 			};
 		return -1;
 	};
@@ -73,15 +84,15 @@
 					.data(net.wires)
 					.enter()
 					.append("line")
-					.style("stroke","#777")
-					.style("stroke-width",2);
+					.style("stroke","grey")
+					.style("stroke-width",3);
 
 		nodes = svg.selectAll("circle")
 					.data(net.boxes)
 					.enter()
 					.append("circle")
 					.attr("r",20)
-					.style("fill","#4a2")
+					.style("fill","green")
 					.call(force.drag);
 
 		force.start();
@@ -117,7 +128,7 @@
 		nodes.enter()
 			.append("circle")
 			.attr("r",20)
-			.style("fill","grey")
+			.style("fill","brown")
 			.call(force.drag);
 
 		nodes.exit().remove();
@@ -140,26 +151,33 @@
 		// msg = {type: add_wire, b1: box1, b2:box2}
 		var b1_index = box_index(msg.b1);
 		var b2_index = box_index(msg.b2);
+		if (b1_index == -1 || b2_index == -1){alert("ERROR: Box1 or/and Box2 does not exist");}
+		else {
 		
-		if (msg.type == 'add_wire'){
-			if (b1_index>=0 & b2_index>=0){net.wires.push({"source":b1_index,"target":b2_index});}
-			else {alert("ERROR: Box1 or/and Box2 does not exist");}
-			
-			
+			if (msg.type == 'add_wire'){ net.wires.push({"source":b1_index,"target":b2_index }); }
+			else if (msg.type == 'del_wire'){ 
+				var j = edge_index({"source":b1_index,"target":b2_index });
+				if (j>=0){ net.wires.splice(j,1); } 
+				else {alert("There is no wire: "+msg.b1+" - "+msg.b2);} 
+			}
+			else {alert("ERROR: wrong message type: "+msg.type)};
+				
+				
 			force.nodes(net.boxes);
 			var nodes = svg.selectAll("circle")
 						.data(net.boxes);
 
 			var edges = svg.selectAll("line")
 					.data(net.wires)
-					.style("stroke","#777");
+					.style("stroke","grey")
+					.style("stroke-width",3);
 
 			edges.exit().remove();
 			
 			edges.enter()
 				.insert("line","circle")
-				.style("stroke","#a22")
-				.style("stroke-width",2);
+				.style("stroke","red")
+				.style("stroke-width",5);
 				
 			
 			force.on("tick", function(){
@@ -171,7 +189,7 @@
 					.attr( "cy",function(d){return d.y;});
 			});
 			force.start();
-		}
+			};
 		};
 	
 	
