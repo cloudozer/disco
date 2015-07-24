@@ -4,7 +4,7 @@
 
 
 -module(port).
--export([new/4,
+-export([new/3,
 		ping/3,
 		pp/1,
 		get_mac/0
@@ -18,10 +18,10 @@
  
 
 
-new(Mac,Box,Box_pid,Links) ->
-	Links ! {new_port,Mac,self()},  % register port in Links
+new(Mac,Box,Links) ->
+	Links ! {new_port,Mac,self(),Box},  % register port in Links
 	spawn(?MODULE,ping,[Mac,Box,Links]),
-	port(disconnected,Mac,Box,Box_pid,Links).
+	port(disconnected,Mac,Box,Links).
 
 
 % States:
@@ -31,52 +31,62 @@ new(Mac,Box,Box_pid,Links) ->
 % 3. {stable, {Neighbor_port, Neighbor_box}, Queue_of_pongs }
 
 
-port(State,Mac,Box,Box_pid,Links) ->
+port(State,Mac,Box,Links) ->
 	receive
-		{<<"FFFFFF">>,Source_port,<<"ND">>,{ping,Source_box} } ->
-			Links ! {Source_port,Mac,<<"ND">>,{pong,Box} },
-			port(State,Mac,Box,Box_pid,Links);
 
-		{Mac,         Source_port,<<"ND">>,{pong,Source_box} } ->
+	%% PING
+
+		{<<"FFFFFF">>,Source_port,<<"ND">>,{ping,Source_box,TS} } ->
+			Pkt = {Source_port,Mac,<<"ND">>,{pong,Box,TS} },
+			Links ! {pkt,Mac,Pkt},
+			port(State,Mac,Box,Links);
+
+	%% PONG
+
+		{Mac,         Source_port,<<"ND">>,{pong,Source_box,TS} } ->
 			case State of
 				disconnected ->
-					port({unstable,{Source_port,Source_box},queue:from_list([os:timestamp()])},
-						Mac,Box,Box_pid,Links);
+					io:format("PORT:~p UNSTABLE connection~n",[Mac]),
+					port({unstable,{Source_port,Source_box},queue:from_list([TS])},
+						Mac,Box,Links);
 
 				{Stable_Unstable, {Source_port, Source_box}, Pongs } ->
 					T = os:timestamp(),
 					Pong1 = remove_expired(T,queue:in(T,Pongs)),
+					%io:format("~p pongs in Queue~n",[queue:len(Pong1)]),
 					case {Stable_Unstable, is_stable(Stable_Unstable,Pong1)} of
 						{Same,Same} -> 
-							port({Stable_Unstable,{Source_port,Source_box},Pong1},Mac,Box,Box_pid,Links);
+							port({Stable_Unstable,{Source_port,Source_box},Pong1},Mac,Box,Links);
 
 						{stable,unstable} ->
-							port({unstable,{Source_port,Source_box},Pong1},Mac,Box,Box_pid,Links);
+							port({unstable,{Source_port,Source_box},Pong1},Mac,Box,Links);
 
 						{unstable,stable} ->
-							Box_pid ! {new_connection, Mac, Source_port,Source_box },
-							port({stable,{Source_port,Source_box},Pong1},Mac,Box,Box_pid,Links)
+							io:format("PORT:~p STABLE connection~n",[Mac]),
+							Box ! {new_connection, Mac, Source_port,Source_box },
+							port({stable,{Source_port,Source_box},Pong1},Mac,Box,Links)
 					end;
 
 
 				{_,{Neighbor_port, Neighbor_box},_} ->  % a new port and/or box
-					port({unstable,{Neighbor_port, Neighbor_box},queue:from_list([os:timestamp()])},
-						Mac,Box,Box_pid,Links)
+					port({unstable,{Neighbor_port, Neighbor_box},queue:from_list([TS])},
+						Mac,Box,Links)
 
 			end;
 
+	%% UPDATE BROADCAST
 
 		{<<"FFFFFF">>,Source_port,<<"ND">>,{add_wire,_,_,_,_,_}=Msg } ->
-			Box_pid ! {Mac,Source_port,Msg},
-			port(State,Mac,Box,Box_pid,Links);
+			Box ! {Mac,Source_port,Msg},
+			port(State,Mac,Box,Links);
 
 		{<<"FFFFFF">>,Source_port,<<"ND">>,{del_wire,_,_,_,_,_}=Msg } ->
-			Box_pid ! {Mac,Source_port,Msg},
-			port(State,Mac,Box,Box_pid,Links)
+			Box ! {Mac,Source_port,Msg},
+			port(State,Mac,Box,Links)
 	after
 		?PING_TIMEOUT ->
-			Box_pid ! {lost_connection, Mac},
-			port(disconnected,Mac,Box,Box_pid,Links)
+			Box ! {lost_connection, Mac},
+			port(disconnected,Mac,Box,Links)
 
 	end.
 
@@ -85,14 +95,16 @@ port(State,Mac,Box,Box_pid,Links) ->
 ping(Mac,Box,Links) ->
 	receive
 	after 
-		?PING_INTERVAL -> Links ! {<<"FFFFFF">>,Mac,<<"ND">>,{ping,Box} },
-		ping(Mac,Box,Links)
+		?PING_INTERVAL -> 
+			Pkt = {<<"FFFFFF">>,Mac,<<"ND">>,{ping,Box,os:timestamp()} },
+			Links ! {pkt,Mac,Pkt},
+			ping(Mac,Box,Links)
 	end.
 
 
 
 remove_expired(T,Q) ->
-	case timer:now_diff(T, queue:get(Q) ) > ?PING_NBR * ?PING_INTERVAL of
+	case timer:now_diff(T, queue:get(Q) ) > ?PING_NBR * ?PING_INTERVAL*1000 of
 		true -> remove_expired(T,queue:drop(Q));
 		false-> Q
 	end.

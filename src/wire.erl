@@ -13,41 +13,48 @@ new() -> spawn(?MODULE,links,[dict:new()]).
 
 links(Connections) ->
 	receive
+
+	%% Messages from Port
+
 		{pkt,Port,Pkt} -> 
 			% check if port is wired.
 			case dict:fetch(Port,Connections) of
-				{not_connected,_} -> ok; % drop the packet
+				{not_connected,_,_} -> ok; % drop the packet
 					%io:format("Packet dropped from port ~p - port not connected~n",[Port]);
-				{Port2,_} ->
-					{Port,Box2_pid} = dict:fetch(Port2,Connections),
-					Box2_pid ! {pkt,Port2,Pkt}
+				{Port2,_,_} ->
+					{Port,ConnPort_pid,_} = dict:fetch(Port2,Connections),
+					ConnPort_pid ! Pkt
 			end,
 			links(Connections);
 
 
-		{new_port,Port,Box_pid} -> 
-			links(dict:store(Port,{not_connected,Box_pid},Connections));
+		{new_port,Port,Port_pid,Box} -> 
+			links(dict:store(Port,{not_connected,Port_pid,Box},Connections));
 
-		{get_info,Pid} ->
-			Pid ! {connections,dict:to_list(Connections)},
-			links(Connections);
+
+	%% Requests from Emulator
 
 		{add_wire,Port1,Port2} ->
 			Res1 = dict:fetch(Port1,Connections),
 			Res2 = dict:fetch(Port2,Connections),
 
 			case {Res1,Res2} of
-				{{not_connected,B1},{not_connected,B2}} ->
-					links(dict:store(Port2,{Port1,B2},dict:store(Port1,{Port2,B1},Connections)));
+				{{not_connected,P1_pid,B1},{not_connected,P2_pid,B2}} ->
+					links(dict:store(Port2,{Port1,P2_pid,B2},dict:store(Port1,{Port2,P1_pid,B1},Connections)));
 				_ ->
 					io:format("Error: one or both ports is/are already connected~n"),
 					links(Connections)
 			end;
 
 		{del_wire,Port1,Port2} ->
-			{Port2,B1} = dict:fetch(Port1,Connections),
-			{Port1,B2} = dict:fetch(Port2,Connections),
-			links(dict:store(Port2,{not_connected,B2},dict:store(Port1,{not_connected,B1},Connections)));
+			{Port2,P1_pid,B1} = dict:fetch(Port1,Connections),
+			{Port1,P2_pid,B2} = dict:fetch(Port2,Connections),
+			links(dict:store(Port2,{not_connected,P2_pid,B2},
+				dict:store(Port1,{not_connected,P1_pid,B1},Connections)));
+
+		{get_info,Pid} ->
+			Pid ! {connections,dict:to_list(Connections)},
+			links(Connections);
 
 		_ ->
 			links(Connections)

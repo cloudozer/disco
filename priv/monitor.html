@@ -61,13 +61,8 @@
 
 	function init_net(msg){
 		// Original data
-		var boxes =[ "box1", "box2", "box3", "box4" ];
-		var	wires =[ 
-			{source:0,target:1},
-			{source:1,target:2},
-			{source:2,target:3},
-			{source:1,target:3},
-			]
+		var boxes = msg.boxes;
+		var	wires = msg.wires;
 		
 		for (var i=0; i<boxes.length; i++){
 			net.boxes.push({"name":boxes[i]});
@@ -199,6 +194,7 @@
 	ws.onopen = function() { ws.send("get_entire_net")};
 	
 	ws.onmessage = function (evt) { 
+		console.log(evt.data);
 		var msg = JSON.parse(evt.data);
 		snd.play();
 		if (msg.type == "entire_net") { init_net(msg);}
