@@ -16,7 +16,7 @@ new(Box,Ports_nbr,Links_pid) ->
 	MACs = [ port:get_mac() || _ <- lists:seq(1,Ports_nbr) ],
 	Bid = spawn(?MODULE,box,[Box,MACs, Links_pid]),
 	register(Box,Bid),
-	
+
 	lists:foreach(  fun(M) -> spawn(port,new, [M,Box,Links_pid]) 
 					end, MACs),
 	Bid.
@@ -30,48 +30,59 @@ box(Box,Ports,Links_pid) ->
 box(Box,Ports,Links_pid,Net_data,Arch) ->
 	receive
 
-	%% Requests from my ports
+	%% Requests from my ports (BROADCASTs)
 
-		{new_connection, _My_port, _Neighbor_port,_Source_box } -> 
-			box(Box,Ports,Links_pid,Net_data,Arch);
+		{new_connection, My_port, Neighbor_port,Neighbor_box } -> 
+			%% check out if the connection is already known
+			case neph:neighbor(Box,My_port,Net_data) of
+				{Neighbor_port,Neighbor_box} ->  			%% do nothing
+					box(Box,Ports,Links_pid,Net_data,Arch); 
+
+				not_connected ->
+					%% update database and broadcast to neihbors
+					Net_data1 = neph:add_neighbor(Box,My_port,Neighbor_port,Neighbor_box,Net_data),
+					
+					%% broadcast info about new wire
+					TS = os:timestamp(),
+					Pkt = {<<"FFFFFF">>,My_port,<<"ND">>,{add_wire,Box,My_port,Neighbor_port,Neighbor_box,TS} },	
+					broadcast(Ports,My_port,Links_pid,Pkt),
+					
+					%% checkout if the Neighbor box is a member of the network
+					case neph:has_box(Neighbor_box,Net_data) of
+						true -> box(Box,Ports,Links_pid,Net_data1,[TS|Arch]);						
+							
+						false->	
+							%% send net_info to a new box
+							Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]),
+							box(Box,Ports,Links_pid,Net_data1,Arch1)
+					end
+			end;
+
+			
 
 		{lost_connection, _My_port} ->
 			box(Box,Ports,Links_pid,Net_data,Arch);
 
-		{_Port,_Source_port,_Msg} ->
-			% Check that Source_port is a neighbor port connected to your Port. If not drop a message
-			% Check that neither Box1 nor Box2 is your Box. Drop otherwise
+		{Port,Source_port,{add_wire,Box1,Port1,Port2,Box2,TS} }=Pkt ->
+			case neph:neighbor(Box,Port,Net_data) of
+				{Source_port,_} -> 
+					case lists:member(TS,Arch) of
+						true -> 
+							box(Box,Ports,Links_pid,Net_data,Arch);  %% stop broad casting message
+						false ->
+							%% update info
+							Net_data1 = neph:add_neighbor(Box1,Port1,Port2,Box2,Net_data),
+							
+							%% send message farther
+							broadcast(Ports,Port,Links_pid,Pkt),
+							box(Box,Ports,Links_pid,Net_data1,[TS|Arch])
+					end;
 
-			box(Box,Ports,Links_pid,Net_data,Arch);
-
-		%{Port,{<<"FFFFFF">>,Source_port,<<"ND">>,{add_wire,Box1,P1,P2,Box2,TS} } } ->
-		%{Port,{<<"FFFFFF">>,Source_port,<<"ND">>,{del_wire,Box1,P1,P2,Box2,TS} } } ->
-
-
-
-
+				_ -> 				%% drop packet
+					box(Box,Ports,Links_pid,Net_data,Arch)
+			end;
+			
 		
-%		{pkt,Port,{<<"FFFFFF">>,_Source_port, {del_wire,Box1,P1,P2,Box2,TS}=Pkt} } ->
-%			% check if this message has been already received
-%			case lists:member(TS,Arch) of
-%				true -> box(Box_id,Ports,Links_pid,Net_data,Arch);
-%				false-> 
-%					lists:foreach(  fun(P) -> Links_pid ! {pkt,P,{<<"FFFFFF">>,P,Pkt }}
-%									end,lists:filter(fun(P)-> P=/=Port end,Ports)),
-%					Net_data1 = neph:del_wire(Box1,P1,P2,Box2,Net_data),
-%					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch])
-%			end;
-%
-%		{pkt,Port,{<<"FFFFFF">>,_Source_port, {add_wire,Box1,P1,P2,Box2,TS}=Pkt} } ->
-%			% check if this message has been already received
-%			case lists:member(TS,Arch) of
-%				true -> box(Box_id,Ports,Links_pid,Net_data,Arch);
-%				false-> 
-%					lists:foreach(  fun(P) -> Links_pid ! {pkt,P,{<<"FFFFFF">>,P,Pkt }}
-%									end,lists:filter(fun(P)-> P=/=Port end,Ports)),
-%					Net_data1 = neph:add_neighbor(Box1,P1,P2,Box2,Net_data),
-%					box(Box_id,Ports,Links_pid,Net_data1,[TS|Arch])
-%			end;
 
 	%% Requests from network Emulator (Shell)
 
@@ -90,7 +101,7 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 	%% Requests from Web Monitor
 
 		{get_entire_net, Pid} -> 
-			io:format("Got message from WS~n"),
+			%io:format("Got message from WS~n"),
 			{Boxes,Wires} = neph:box_wire_list(Net_data),
 			io:format("Boxes:~p~nWires:~p~n",[Boxes,Wires]),
 			Pid ! {entire_net,Boxes,Wires},
@@ -101,9 +112,21 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 	end.
 
 
+
+%% sends {pkt,Port,Pkt} to to Links_pid for each port excepts a given Port_not_send
+broadcast(Ports_to_send,Port_not_send,Links_pid,Pkt) ->						
+	lists:foreach(  fun(P) ->
+						case P of
+							Port_not_send -> ok;
+							_ -> Links_pid ! {pkt,P,Pkt}
+						end
+					end,Ports_to_send).
+
+
+
 % sends out network info in a form of packets to a given port
 % returns a new Archive of sent broadcasts
-broadcast_net_info(Box,Port,Links_pid,Net_data,Arch) ->
+send_net_info(Box,Port,Links_pid,Net_data,Arch) ->
 	bni([Box],Port,Links_pid,Net_data,Arch,[]).
 
 bni([Lead|Leads],Port,Links_pid,Net_data,Arch,Proc_boxes) ->

@@ -56,10 +56,10 @@ box_wire_list(Net_data,[Box|To_proc],Boxes,Done_boxes,Acc) ->
 			Neibs = lists:filter(fun(B)-> not lists:member(B,Done_boxes)
 								end,neighbor_boxes(Box,Net_data)),
 
-			K = lists:keyfind(Box,1,Boxes),
+			{Box,K} = lists:keyfind(Box,1,Boxes),
 			{Done_boxes1,Acc1} = lists:foldl(fun(B,{D,A})-> 
-									{B,J} = lists:kefind(B,1,Boxes),
-									{[B|D],[{J,K}|A]}
+									{B,J} = lists:keyfind(B,1,Boxes),
+									{[B|D],[[{source,J},{target,K}]|A]}
 											end,{Done_boxes,Acc},Neibs),
 			box_wire_list(Net_data,To_proc,Boxes,[Box|Done_boxes1],Acc1)
 	end;

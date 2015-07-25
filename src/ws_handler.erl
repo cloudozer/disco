@@ -13,8 +13,9 @@ init(Req, _Opts) ->
 % messages from Box process
 websocket_info({entire_net,Boxes,Wires}, Req, State) ->
 	%io:format("WS: got message from Box~n"),
-
-	{reply, {text, jsx:encode([{boxes,Boxes},{wires,Wires}])}, Req, State};
+	Json = jsx:encode([{boxes,Boxes},{wires,Wires}]),
+	%io:format("Json: ~p~n",[Json]),
+	{reply, {text, Json}, Req, State};
 
 websocket_info(update, Req, State) ->
     %% Send a text to a websocket

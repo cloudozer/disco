@@ -59,6 +59,7 @@ port(State,Mac,Box,Links) ->
 							port({Stable_Unstable,{Source_port,Source_box},Pong1},Mac,Box,Links);
 
 						{stable,unstable} ->
+							io:format("PORT:~p STABLE connection~n",[Mac]),
 							port({unstable,{Source_port,Source_box},Pong1},Mac,Box,Links);
 
 						{unstable,stable} ->
