@@ -56,6 +56,10 @@ links(Connections) ->
 			Pid ! {connections,dict:to_list(Connections)},
 			links(Connections);
 
+		{free_ports,Pid} ->
+			Pid ! {connections,lists:sort([ {Box,Port} || {Port,{not_connected,_,Box}} <- dict:to_list(Connections) ]) },
+			links(Connections);
+
 		_ ->
 			links(Connections)
 	end.	

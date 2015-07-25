@@ -33,13 +33,14 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 	%% Requests from my ports (BROADCASTs)
 
 		{new_connection, My_port, Neighbor_port,Neighbor_box } -> 
+			io:format("~p: new_connection - ~p~n",[Box,Neighbor_box]),
 			%% check out if the connection is already known
 			case neph:neighbor(Box,My_port,Net_data) of
 				{Neighbor_port,Neighbor_box} ->  			%% do nothing
 					box(Box,Ports,Links_pid,Net_data,Arch); 
 
 				not_connected ->
-					%% update database and broadcast to neihbors
+					%% update database and broadcast to neighbors
 					Net_data1 = neph:add_neighbor(Box,My_port,Neighbor_port,Neighbor_box,Net_data),
 					
 					%% broadcast info about new wire
@@ -58,31 +59,24 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 					end
 			end;
 
-			
-
 		{lost_connection, _My_port} ->
 			box(Box,Ports,Links_pid,Net_data,Arch);
 
-		{Port,Source_port,{add_wire,Box1,Port1,Port2,Box2,TS} }=Pkt ->
-			case neph:neighbor(Box,Port,Net_data) of
-				{Source_port,_} -> 
-					case lists:member(TS,Arch) of
-						true -> 
-							box(Box,Ports,Links_pid,Net_data,Arch);  %% stop broad casting message
-						false ->
-							%% update info
-							Net_data1 = neph:add_neighbor(Box1,Port1,Port2,Box2,Net_data),
-							
-							%% send message farther
-							broadcast(Ports,Port,Links_pid,Pkt),
-							box(Box,Ports,Links_pid,Net_data1,[TS|Arch])
-					end;
 
-				_ -> 				%% drop packet
-					box(Box,Ports,Links_pid,Net_data,Arch)
+		{pkt,Port,{<<"FFFFFF">>,_,<<"ND">>,{add_wire,Box1,Port1,Port2,Box2,TS} }=Pkt } ->
+			io:format("~p: got broadcast - ~p~n",[Box,Pkt]),
+			case lists:member(TS,Arch) of
+				true -> 
+					box(Box,Ports,Links_pid,Net_data,Arch);  %% old packet - stop broadcasting message
+				false ->
+					%% update info
+					Net_data1 = neph:add_neighbor(Box1,Port1,Port2,Box2,Net_data),
+					
+					%% send message farther
+					broadcast(Ports,Port,Links_pid,Pkt),
+					box(Box,Ports,Links_pid,Net_data1,[TS|Arch])
 			end;
 			
-		
 
 	%% Requests from network Emulator (Shell)
 
@@ -127,13 +121,16 @@ broadcast(Ports_to_send,Port_not_send,Links_pid,Pkt) ->
 % sends out network info in a form of packets to a given port
 % returns a new Archive of sent broadcasts
 send_net_info(Box,Port,Links_pid,Net_data,Arch) ->
+	io:format("broadcasting net info of ~p~n",[Box]),
 	bni([Box],Port,Links_pid,Net_data,Arch,[]).
 
 bni([Lead|Leads],Port,Links_pid,Net_data,Arch,Proc_boxes) ->
 	Neibs = [ {P1,P2,B} || {P1,P2,B} <- neph:neighbors(Lead,Net_data), not lists:member(B,Proc_boxes)],
 	Arch1 = lists:foldl(fun({P1,P2,B},Acc) ->
 			TS = os:timestamp(),
-			Links_pid ! {pkt,Port,{<<"FFFFFF">>,Port, {add_wire,Lead,P1,P2,B,TS}} },
+			Pkt = {<<"FFFFFF">>,Port,<<"ND">>,{add_wire,Lead,P1,P2,B,TS}},
+			io:format("broadcasting packet: ~p~n",[Pkt]),
+			Links_pid ! {pkt,Port,Pkt },
 			[TS|Acc] 
 						end, Arch, Neibs),
 	Boxes = lists:usort([ B || {_,_,B} <- Neibs]),

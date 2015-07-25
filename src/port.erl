@@ -77,12 +77,12 @@ port(State,Mac,Box,Links) ->
 
 	%% UPDATE BROADCAST
 
-		{<<"FFFFFF">>,Source_port,<<"ND">>,{add_wire,_,_,_,_,_}=Msg } ->
-			Box ! {Mac,Source_port,Msg},
+		{<<"FFFFFF">>,_,<<"ND">>,{add_wire,_,_,_,_,_} }=Pkt ->
+			Box ! {pkt,Mac,Pkt},
 			port(State,Mac,Box,Links);
 
-		{<<"FFFFFF">>,Source_port,<<"ND">>,{del_wire,_,_,_,_,_}=Msg } ->
-			Box ! {Mac,Source_port,Msg},
+		{<<"FFFFFF">>,_,<<"ND">>,{del_wire,_,_,_,_,_} }=Pkt ->
+			Box ! {pkt,Mac,Pkt},
 			port(State,Mac,Box,Links)
 	after
 		?PING_TIMEOUT ->
