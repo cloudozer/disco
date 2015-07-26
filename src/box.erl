@@ -33,7 +33,7 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 	%% Requests from my ports (BROADCASTs)
 
 		{new_connection, My_port, Neighbor_port,Neighbor_box } -> 
-			io:format("~p: new_connection - ~p~n",[Box,Neighbor_box]),
+			io:format("  ~p: new_connection - ~p~n",[Box,Neighbor_box]),
 			%% check out if the connection is already known
 			case neph:neighbor(Box,My_port,Net_data) of
 				{Neighbor_port,Neighbor_box} ->  			%% do nothing
@@ -49,14 +49,16 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 					broadcast(Ports,My_port,Links_pid,Pkt),
 					
 					%% checkout if the Neighbor box is a member of the network
-					case neph:has_box(Neighbor_box,Net_data) of
-						true -> box(Box,Ports,Links_pid,Net_data1,[TS|Arch]);						
-							
-						false->	
-							%% send net_info to a new box
-							Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]),
-							box(Box,Ports,Links_pid,Net_data1,Arch1)
-					end
+					%case neph:has_box(Neighbor_box,Net_data) of
+					%	true -> box(Box,Ports,Links_pid,Net_data1,[TS|Arch]);						
+					%		
+					%	false->	
+					%		%% send net_info to a new box
+					%		Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]),
+					%		box(Box,Ports,Links_pid,Net_data1,Arch1)
+					%end
+					Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]),
+					box(Box,Ports,Links_pid,Net_data1,Arch1)
 			end;
 
 		{lost_connection, _My_port} ->
