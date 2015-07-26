@@ -10,7 +10,7 @@
 		get_mac/0
 		]).
 
--define(PING_INTERVAL,1000).
+-define(PING_INTERVAL,500).
 -define(PING_TIMEOUT,5000).
 -define(PING_NBR, 10). 
 -define(HIGH_THR,0.75). % percentage of pongs coming back during some interval

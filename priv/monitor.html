@@ -6,7 +6,7 @@
 	<script type="text/javascript">
 
 	// width and height
-	var w = 800;
+	var w = 400;
 	var h = 500;
 
 	var net = {boxes:[],wires:[]};
@@ -90,6 +90,9 @@
 					.style("fill","green")
 					.call(force.drag);
 
+		svg.select("circle").style("fill","blue");
+
+
 		force.start();
 			
 		force.on("tick", function(){
@@ -127,6 +130,7 @@
 			.call(force.drag);
 
 		nodes.exit().remove();
+		svg.select("circle").style("fill","blue")
 
 		var edges = svg.selectAll("line")
 					.data(net.wires);

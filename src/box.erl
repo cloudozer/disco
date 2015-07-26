@@ -71,7 +71,7 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 				false ->
 					%% update info
 					Net_data1 = neph:add_neighbor(Box1,Port1,Port2,Box2,Net_data),
-					
+
 					%% send message farther
 					broadcast(Ports,Port,Links_pid,Pkt),
 					box(Box,Ports,Links_pid,Net_data1,[TS|Arch])
@@ -81,7 +81,9 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 	%% Requests from network Emulator (Shell)
 
 		{get_info,Pid} ->
-			Pid ! {network_info,neph:box_list(Net_data)},
+			Info = lists:foldl( fun(B,Acc)-> [{B,neph:neighbors(B,Net_data)}|Acc]
+								end,[],neph:box_list(Net_data)),
+			Pid ! {network_info,Info},
 			box(Box,Ports,Links_pid,Net_data,Arch);
 
 		{draw_net,_} ->
@@ -96,7 +98,7 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 
 		{get_entire_net, Pid} -> 
 			%io:format("Got message from WS~n"),
-			{Boxes,Wires} = neph:box_wire_list(Net_data),
+			{Boxes,Wires} = neph:box_wire_list(Box,Net_data),
 			io:format("Boxes:~p~nWires:~p~n",[Boxes,Wires]),
 			Pid ! {entire_net,Boxes,Wires},
 			box(Box,Ports,Links_pid,Net_data,Arch);

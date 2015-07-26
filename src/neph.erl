@@ -11,7 +11,7 @@
 -export([new/1,size/1,
 		has_box/2,
 		box_list/1,
-		box_wire_list/1,
+		box_wire_list/2,
 		neighbor/3,
 		neighbor_boxes/2,
 		neighbors/2,
@@ -44,9 +44,9 @@ box_list(Net_data) -> dict:fetch_keys(Net_data).
 
 % returns a tuple containing box list and wire list. wires represented
 % as tuples containing two indices: (box1_id, box2_id), where index is 
-% zero-base index in the box list
-box_wire_list(Net_data) -> 
-	Box_list = box_list(Net_data),
+% zero-base index in the box list. A given Box always comes first in the output
+box_wire_list(Box,Net_data) -> 
+	Box_list = [ Box|lists:delete(Box,box_list(Net_data)) ],
 	box_wire_list(Net_data, Box_list,lists:zip(Box_list,lists:seq(0,length(Box_list)-1)), [], []).
 
 box_wire_list(Net_data,[Box|To_proc],Boxes,Done_boxes,Acc) ->
@@ -57,11 +57,11 @@ box_wire_list(Net_data,[Box|To_proc],Boxes,Done_boxes,Acc) ->
 								end,neighbor_boxes(Box,Net_data)),
 
 			{Box,K} = lists:keyfind(Box,1,Boxes),
-			{Done_boxes1,Acc1} = lists:foldl(fun(B,{D,A})-> 
+			Acc1 = lists:foldl(fun(B,A)-> 
 									{B,J} = lists:keyfind(B,1,Boxes),
-									{[B|D],[[{source,J},{target,K}]|A]}
-											end,{Done_boxes,Acc},Neibs),
-			box_wire_list(Net_data,To_proc,Boxes,[Box|Done_boxes1],Acc1)
+									[[{source,J},{target,K}]|A]
+											end,Acc,Neibs),
+			box_wire_list(Net_data,To_proc,Boxes,[Box|Done_boxes],Acc1)
 	end;
 box_wire_list(_Net_data,[],Boxes,_Done_boxes,Acc) ->
 	{[ B || {B,_} <- Boxes ],Acc}.
