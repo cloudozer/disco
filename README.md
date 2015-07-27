@@ -11,7 +11,7 @@ connected with each other:
  - a network explorer
  - a monitor for better visualization of the network discovery process
 
-This main goal of this application is to facilitate the process of development and verification
+The main goal of this application is to facilitate the process of development and verification
 of network discovery protocol which should become a basic feature of IvanOS.
 
 ## Dependecies
@@ -26,7 +26,6 @@ of network discovery protocol which should become a basic feature of IvanOS.
 	
 	```
 	https://github.com/tsybulkin/discovery.git
-
 	cd discovery
 	```
 
@@ -39,17 +38,17 @@ of network discovery protocol which should become a basic feature of IvanOS.
 
 ## Network simulation
 
-Before creating your network you need to create a wire hub, a special process for 
+Before creating any network you need to spawn a wire hub, a special process for 
 manipulating with wires, connecting or disconnecting boxes and so on.
 
 	```
 	W = wire:new().
 	```
 
-W is an Erlang process that will help you control your network.
+W is a pid of an Erlang process that will help you control your network.
 
-Then you may add new boxes. Each box must have a unique id. I recommend assign a simple ids like
-box1, box2, and so on for simplicity. You also need to specify the number of ports
+Then you may add new boxes. Each box must have a unique id. I recommend choosing a simple ids like
+box1, box2, and so on for simplicity reson. You also need to specify the number of ports
 the box has and an ID of the network hub:
 
 	```
@@ -76,9 +75,14 @@ To look at the box2's network information open browser at http://localhost:8080/
 
 There are a few commands you may use to manipulate with you network:
 
-	```
-	box:new(Box_id, Port_nbr, W)
-	```
+	|:---|:---|
+	|box:new(Box_id,Port_nbr,W)	| Box_id - a unique id; You may use atoms instead of numbers or strings.
+									Port_nbr - an integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
+	|wire:free_ports(W)			| Returns a list of boxes' ports that are not connected at the moment |
+	|W!{add_wire,Port1,Port2}	| Connects two given ports with a wire. If one or both ports are already
+									connected, it ignores the command showing a warning 	|
+	|W!{del_wire,Port1,Port2}	| Disconnect the given ports. If the ports are not connected with each 									other, it ignores the command showing a warning |  
+	|---|---|
 
 
 
