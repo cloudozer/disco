@@ -25,9 +25,9 @@ new(Box,Ports_nbr,Links_pid) ->
 
 
 box(Box,Ports,Links_pid) -> 
-	box(Box,Ports,Links_pid,neph:new(Box),[]).
+	box(Box,Ports,Links_pid,neph:new(Box),[],undef).
 
-box(Box,Ports,Links_pid,Net_data,Arch) ->
+box(Box,Ports,Links_pid,Net_data,Arch,Monitor) ->
 	receive
 
 	%% Requests from my ports (BROADCASTs)
@@ -37,11 +37,11 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 			%% check out if the connection is already known
 			case neph:neighbor(Box,My_port,Net_data) of
 				{Neighbor_port,Neighbor_box} ->  			%% do nothing
-					box(Box,Ports,Links_pid,Net_data,Arch); 
+					box(Box,Ports,Links_pid,Net_data,Arch,Monitor); 
 
 				not_connected ->
 					%% update database and broadcast to neighbors
-					Net_data1 = neph:add_neighbor(Box,My_port,Neighbor_port,Neighbor_box,Net_data),
+					Net_data1 = add_connection(Box,My_port,Neighbor_port,Neighbor_box,Net_data,Monitor),
 					
 					%% broadcast info about new wire
 					TS = os:timestamp(),
@@ -57,26 +57,28 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 					%		Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]),
 					%		box(Box,Ports,Links_pid,Net_data1,Arch1)
 					%end
-					Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]),
-					box(Box,Ports,Links_pid,Net_data1,Arch1)
+					
+					%% send entire net_info in any case
+					Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]), 
+					box(Box,Ports,Links_pid,Net_data1,Arch1,Monitor)
 			end;
 
 		{lost_connection, _My_port} ->
-			box(Box,Ports,Links_pid,Net_data,Arch);
+			box(Box,Ports,Links_pid,Net_data,Arch,Monitor);
 
 
 		{pkt,Port,{<<"FFFFFF">>,_,<<"ND">>,{add_wire,Box1,Port1,Port2,Box2,TS} }=Pkt } ->
 			io:format("~p: got broadcast - ~p~n",[Box,Pkt]),
 			case lists:member(TS,Arch) of
 				true -> 
-					box(Box,Ports,Links_pid,Net_data,Arch);  %% old packet - stop broadcasting message
+					box(Box,Ports,Links_pid,Net_data,Arch,Monitor);  %% old packet - stop broadcasting message
 				false ->
 					%% update info
-					Net_data1 = neph:add_neighbor(Box1,Port1,Port2,Box2,Net_data),
+					Net_data1 = add_connection(Box1,Port1,Port2,Box2,Net_data,Monitor),
 
 					%% send message farther
 					broadcast(Ports,Port,Links_pid,Pkt),
-					box(Box,Ports,Links_pid,Net_data1,[TS|Arch])
+					box(Box,Ports,Links_pid,Net_data1,[TS|Arch],Monitor)
 			end;
 			
 
@@ -86,15 +88,15 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 			Info = lists:foldl( fun(B,Acc)-> [{B,neph:neighbors(B,Net_data)}|Acc]
 								end,[],neph:box_list(Net_data)),
 			Pid ! {network_info,Info},
-			box(Box,Ports,Links_pid,Net_data,Arch);
+			box(Box,Ports,Links_pid,Net_data,Arch,Monitor);
 
 		{draw_net,_} ->
 			to_dot(Box,Net_data),
-			box(Box,Ports,Links_pid,Net_data,Arch);
+			box(Box,Ports,Links_pid,Net_data,Arch,Monitor);
 
 		{ports_info,Pid} ->
 			Pid ! {ports_info,Ports},
-			box(Box,Ports,Links_pid,Net_data,Arch);
+			box(Box,Ports,Links_pid,Net_data,Arch,Monitor);
 
 	%% Requests from Web Monitor
 
@@ -103,11 +105,34 @@ box(Box,Ports,Links_pid,Net_data,Arch) ->
 			{Boxes,Wires} = neph:box_wire_list(Box,Net_data),
 			io:format("Boxes:~p~nWires:~p~n",[Boxes,Wires]),
 			Pid ! {entire_net,Boxes,Wires},
-			box(Box,Ports,Links_pid,Net_data,Arch);
+			box(Box,Ports,Links_pid,Net_data,Arch,Pid)
 
-		_ -> box(Box,Ports,Links_pid,Net_data,Arch)
 
+	%	_ -> box(Box,Ports,Links_pid,Net_data,Arch,Monitor)
 	end.
+
+
+
+
+%% adds new connection to Net_data and sends update to Monitor
+% returns new Net_data
+add_connection(Box1,Port1,Port2,Box2,Net_data,undef) -> 
+	neph:add_neighbor(Box1,Port1,Port2,Box2,Net_data);
+add_connection(Box1,Port1,Port2,Box2,Net_data,Monitor) ->
+	case neph:has_box(Box1,Net_data) of
+		false -> Monitor ! {add_box, Box1};
+		_ -> ok
+	end,
+	case neph:has_box(Box2,Net_data) of
+		false -> Monitor ! {add_box, Box2};
+		_ -> ok
+	end,
+	case neph:neighbor(Box1,Port1,Net_data) of
+		{Port1,Port2,Box2} -> ok;
+		_ -> Monitor ! {add_wire,Box1,Box2}
+	end,
+	neph:add_neighbor(Box1,Port1,Port2,Box2,Net_data).
+
 
 
 
@@ -119,6 +144,7 @@ broadcast(Ports_to_send,Port_not_send,Links_pid,Pkt) ->
 							_ -> Links_pid ! {pkt,P,Pkt}
 						end
 					end,Ports_to_send).
+
 
 
 

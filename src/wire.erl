@@ -2,10 +2,12 @@
 %
 %
 
-
 -module(wire).
--export([new/0, links/1
+-export([new/0, links/1, ask/2, free_ports/1
 		]).
+
+-define(REQ_TIMEOUT,2000).
+
 
 
 new() -> spawn(?MODULE,links,[dict:new()]).
@@ -57,11 +59,32 @@ links(Connections) ->
 			links(Connections);
 
 		{free_ports,Pid} ->
-			Pid ! {connections,lists:sort([ {Box,Port} || {Port,{not_connected,_,Box}} <- dict:to_list(Connections) ]) },
+			Pid ! lists:sort([ {Box,Port} || {Port,{not_connected,_,Box}} <- dict:to_list(Connections) ]),
 			links(Connections);
 
 		_ ->
 			links(Connections)
 	end.	
+
+
+
+free_ports(W) -> 
+	W ! {free_ports,self()},
+	receive
+		Answer -> Answer
+	after
+		?REQ_TIMEOUT -> no_response
+	end.
+	
+
+
+
+ask(Pid,Req_msg) ->
+	Pid ! {Req_msg, self()},
+	receive 
+		Answer -> Answer 
+	after
+		?REQ_TIMEOUT -> no_response			
+	end.
 
 

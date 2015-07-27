@@ -7,7 +7,7 @@
 
 	// width and height
 	var w = 400;
-	var h = 500;
+	var h = 400;
 
 	var net = {boxes:[],wires:[]};
 	var force = d3.layout.force()
@@ -200,13 +200,12 @@
 	ws.onmessage = function (evt) { 
 		console.log(evt.data);
 		var msg = JSON.parse(evt.data);
-		snd.play();
 		if (msg.type == "entire_net") { init_net(msg);}
 		else if (msg.type == "add_box" || msg.type == "del_box") {boxing(msg);}
 		else if (msg.type == "add_wire" || msg.type == "del_wire") {wiring(msg);}
 		else {
-			init_net(msg);
-			//alert("ERROR: got wrong message: "+msg);
+			//init_net(msg);
+			alert("ERROR: got wrong message: "+msg);
 		}
 		};
 
