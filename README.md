@@ -24,17 +24,17 @@ of network discovery protocol which should become one of basic capabilities of I
 
 1. Clone the repo 
 	
-	```
-	https://github.com/tsybulkin/discovery.git
-	cd discovery
-	```
+```
+https://github.com/tsybulkin/discovery.git
+cd discovery
+```
 
 2. Then compile the application and run it:
 
-	```
-	./rebar co
-	erl -pa ebin deps/*/ebin -s discovery_app
-	``` 
+```
+./rebar co
+erl -pa ebin deps/*/ebin -s discovery_app
+``` 
 
 ## Network simulation
 
@@ -42,7 +42,8 @@ Before creating any network you need to spawn a wire hub, a special process for
 manipulating with wires, connecting or disconnecting boxes and so on.
 
 ```erlang
-W = wire:new().
+1> W = wire:new().
+2> 
 ```
 
 W is a pid of an Erlang process that will help you control your network.
@@ -79,12 +80,12 @@ There are a few commands you may use to manipulate with you network:
 
 |Command | Description |
 |---|:---|
-|box:new(Box_id,Port_nbr,W)	| Box_id - a unique id; You may use atoms instead of numbers or strings.
-									Port_nbr - an integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
+|box:new(Box_id,Port_nbr,W)	| Box_id - a unique id; You may use atoms instead of numbers or strings. 
+Port_nbr - an integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
 |wire:free_ports(W)			| Returns a list of boxes' ports that are not connected at the moment |
 |W!{add_wire,Port1,Port2}	| Connects two given ports with a wire. If one or both ports are already
-									connected, it ignores the command showing a warning 	|
-|W!{del_wire,Port1,Port2}	| Disconnect the given ports. If the ports are not connected with each 									other, it ignores the command showing a warning |
+ connected, it ignores the command showing a warning 	|
+|W!{del_wire,Port1,Port2}	| Disconnect the given ports. If the ports are not connected with each other, it ignores the command showing a warning |
 |---|---|
 
 
