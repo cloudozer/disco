@@ -12,7 +12,7 @@ connected with each other:
  - a monitor for better visualization of the network discovery process
 
 The main goal of this application is to facilitate the process of development and verification
-of network discovery protocol which should become a basic feature of IvanOS.
+of network discovery protocol which should become one of basic capabilities of IvanOS.
 
 ## Dependecies
 
@@ -29,7 +29,7 @@ of network discovery protocol which should become a basic feature of IvanOS.
 	cd discovery
 	```
 
-	Then compile the application and run it:
+2. Then compile the application and run it:
 
 	```
 	./rebar co
@@ -42,7 +42,8 @@ Before creating any network you need to spawn a wire hub, a special process for
 manipulating with wires, connecting or disconnecting boxes and so on.
 
 	```
-	W = wire:new().
+	1> W = wire:new().
+	2>
 	```
 
 W is a pid of an Erlang process that will help you control your network.
@@ -52,8 +53,10 @@ box1, box2, and so on for simplicity reson. You also need to specify the number 
 the box has and an ID of the network hub:
 
 	```
-	box:new(box1,2,W).
-	box:new(box2,3,W).
+	2> box:new(box1,2,W).
+	<0.156.0>
+	3> box:new(box2,3,W).
+	<0.162.0>
 	```
 
 In the example above we added two new boxes with ids: box1 and box2, specifying that box1 has two ports
@@ -61,20 +64,21 @@ while box2 has 3 ports. The created boxes are disconnected, so they do not see e
 
 You may open a monitor to watch the status of any box. Open a browser and enter:
 
-	```
+
 	http://localhost:8080/box1
-	```
+
 
 A little blue ball should appear in the browser showing that box1 knows only about itself. There are no
 neighbors in its network.
 
-To look at the box2's network information open browser at http://localhost:8080/box2
+To look at the box2 network information open browser at http://localhost:8080/box2
 
 
 ## Wire hub API
 
 There are a few commands you may use to manipulate with you network:
 
+	|Command | Description |
 	|:---|:---|
 	|box:new(Box_id,Port_nbr,W)	| Box_id - a unique id; You may use atoms instead of numbers or strings.
 									Port_nbr - an integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
