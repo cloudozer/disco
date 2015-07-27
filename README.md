@@ -22,14 +22,14 @@ of network discovery protocol which should become one of basic capabilities of I
 
 ## How to install application and run it
 
-1. Clone the repo 
+First, clone the repo: 
 	
 ```
 https://github.com/tsybulkin/discovery.git
 cd discovery
 ```
 
-2. Then compile the application and run it:
+Then, compile the application and run it:
 
 ```
 ./rebar co
@@ -57,6 +57,7 @@ the box has and an ID of the network hub:
 <0.156.0>
 3> box:new(box2,3,W).
 <0.162.0>
+4> 
 ```
 
 In the example above we added two new boxes with ids: box1 and box2, specifying that box1 has two ports
@@ -80,11 +81,9 @@ There are a few commands you may use to manipulate with you network:
 
 |Command | Description |
 |---|:---|
-|box:new(Box_id,Port_nbr,W)	| Box_id - a unique id; You may use atoms instead of numbers or strings. 
-Port_nbr - an integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
+|box:new(Box_id,Port_nbr,W)	| Box_id - a unique id; You may use atoms instead of numbers or strings. Port_nbr - an integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
 |wire:free_ports(W)			| Returns a list of boxes' ports that are not connected at the moment |
-|W!{add_wire,Port1,Port2}	| Connects two given ports with a wire. If one or both ports are already
- connected, it ignores the command showing a warning 	|
+|W!{add_wire,Port1,Port2}	| Connects two given ports with a wire. If one or both ports are already connected, it ignores the command showing a warning 	|
 |W!{del_wire,Port1,Port2}	| Disconnect the given ports. If the ports are not connected with each other, it ignores the command showing a warning |
 |---|---|
 
