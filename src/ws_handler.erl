@@ -15,13 +15,19 @@ init(Req, _Opts) ->
 % messages from Box process
 websocket_info({add_box,Box}, Req, State) ->
 	Json = jsx:encode([{type,add_box},{name,Box}]),
-	io:format("JSON: ~s~n",[Json]),
+	%io:format("JSON: ~s~n",[Json]),
 	{reply, {text, Json}, Req, State};
 
 % messages from Box process
 websocket_info({add_wire,Box1,Box2}, Req, State) ->
 	Json = jsx:encode([{type,add_wire},{b1,Box1},{b2,Box2}]),
-	io:format("JSON: ~s~n",[Json]),
+	%io:format("JSON: ~s~n",[Json]),
+	{reply, {text, Json}, Req, State};
+
+% messages from Box process
+websocket_info({del_wire,Box1,Box2}, Req, State) ->
+	Json = jsx:encode([{type,del_wire},{b1,Box1},{b2,Box2}]),
+	%io:format("JSON: ~s~n",[Json]),
 	{reply, {text, Json}, Req, State};
 
 

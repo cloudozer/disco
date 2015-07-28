@@ -10,9 +10,9 @@
 		get_mac/0
 		]).
 
--define(PING_INTERVAL,500).
+-define(PING_INTERVAL,100).
 -define(PING_TIMEOUT,5000).
--define(PING_NBR, 10). 
+-define(PING_NBR, 7). 
 -define(HIGH_THR,0.75). % percentage of pongs coming back during some interval
 -define(LOW_THR, 0.25). % percentage of pongs coming back during some interval
  
@@ -86,9 +86,12 @@ port(State,Mac,Box,Links) ->
 			port(State,Mac,Box,Links)
 	after
 		?PING_TIMEOUT ->
-			Box ! {lost_connection, Mac},
-			port(disconnected,Mac,Box,Links)
-
+			case State of
+				disconnected -> port(disconnected,Mac,Box,Links);
+				_ ->
+					Box ! {lost_connection, Mac},
+					port(disconnected,Mac,Box,Links)
+			end
 	end.
 
 
