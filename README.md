@@ -14,10 +14,10 @@ connected with each other:
 The main goal of this application is to facilitate the process of development and verification
 of network discovery protocol which should become one of basic capabilities of IvanOS.
 
-## Dependecies
+## Dependencies
 
 - cowboy, a web server for monitoring network discovery
-- jsx, JSON converter library needed for intagration of Erlang apps and JS app (Monitor)
+- jsx, JSON converter library needed for integration of Erlang apps and JS app (Monitor)
 - Erlang
 
 ## How to install application and run it
@@ -50,7 +50,7 @@ manipulating with wires, connecting or disconnecting boxes and so on.
 W is a pid of an Erlang process that will help you control your network.
 
 Then you may add new boxes. Each box must have a unique id. I recommend choosing a simple ids like
-box1, box2, and so on for simplicity reson. You also need to specify the number of ports
+box1, box2, and so on for simplicity reason. You also need to specify the number of ports
 the box has and an ID of the network hub:
 
 ``` erlang
@@ -84,6 +84,7 @@ There are a few commands you may use to manipulate with you network:
 |:---|:---|
 |box:new(Box_id,Port_nbr,W)	| Box_id - a unique id; You may use atoms instead of numbers or strings. Port_nbr = integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
 |wire:free_ports(W)			| Returns a list of boxes' ports that are not connected at the moment |
+|wire:wires(W) 				| Shows all connection in the network 							|
 |W!{add_wire,Port1,Port2}	| Connects two given ports with a wire. If one or both ports are already connected, it ignores the command showing a warning 	|
 |W!{del_wire,Port1,Port2}	| Disconnect the given ports. If the ports are not connected with each other, it ignores the command showing a warning |
 |---|---|
