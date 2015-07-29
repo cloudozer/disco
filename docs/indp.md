@@ -245,15 +245,15 @@ be dropped by nodes which get it twice.
 The current version of the protocol assumes that a connection can be tested
 only by sending packets to a port and waiting for the response. Thus,
 we do not separate two different events:
-- disconnecting nodes physically plugging off the wire from the port or switching off
- a computer and
-- a temporarily connection lost due to congestion, traffic jam, or any other reasons.
+- a physical loss of connectivity between nodes and
+- a temporarily connection loss due to congestions, traffic jams, or any other reasons.
 
 To separate these two different types of problems with network connection we use two additional
-unstable states. This helps us to separate short temporal problems from long-lasting 
+unstable states described in the State of connection section of this doc. 
+This helps us to separate short temporal problems from long-lasting 
 consequences caused by plugging the wire off or turning the whole box off. 
 
-If these two events can be read figured out using other means, the protocol can be simplified a bit.
+If these two events can be explicitly and reliably separated on a physical level, the protocol can be simplified.
 
 
 #### Bulky updates
