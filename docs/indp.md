@@ -201,7 +201,7 @@ its network.
 
 #### Connection lost
 
-If box loses one of its connections it send a simple broadcast to all its ports and pushes
+If box looses one of its connections it send a simple broadcast to all its ports and pushes
 TS to its broadcast archive.
 
 ```Erlang 

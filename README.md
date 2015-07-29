@@ -25,13 +25,14 @@ of network discovery protocol which should become one of basic capabilities of I
 First, clone the repo: 
 	
 ```
-https://github.com/tsybulkin/discovery.git
+git clone https://github.com/tsybulkin/discovery.git
 cd discovery
 ```
 
 Then, compile the application and run it:
 
 ```
+./rebar get-deps
 ./rebar co
 erl -pa ebin deps/*/ebin -s discovery_app
 ``` 
