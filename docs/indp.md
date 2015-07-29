@@ -137,26 +137,31 @@ ND shares a change in its state with its neighbors only in two cases:
 
 A diagram showing all possible transitions between connection states depicted below:
 
+![Connection state diagramm](https://github.com/tsybulkin/discovery/blob/master/docs/connection_states_diagram/connection_states_diagram.001.jpg)
 
 
 
 ### Broadcasts
 
+ND shares an update in its connection state change with the rest of the network sending
+broadcast packets to its neighbors. Neighbors read them, analyze, and either send farther or
+drop stopping broadcasting wave.
+
 Any box may initiate a broadcast update if a certain condition trigers this.
-A broad cast packet format is shown below:
+A broadcast packet format is shown below:
 
 ```Erlang 
 { <<"FFFFFF">>, Source_port, ND_type, {BCM_type,TS, ...} }
-
 ```
 
 where: 
 BCM_type - one of possible broadcast message types;
 TS - time stamp of the message
 
-There two BCM_types:
-add_wire - a request to add a new connection between two boxes. 
-del_wire - a request to delete the given connection
+There two BCM_types so far used for information sharing:
+
+	add_wire - a request to add a new connection between two boxes. 
+	del_wire - a request to delete the given connection
 
 
 ### Open questions
