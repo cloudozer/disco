@@ -138,7 +138,7 @@ ND shares a change in its state with its neighbors only in two (depicted in red)
 
 A diagram showing all possible transitions between connection states depicted below:
 
-![Connection state diagramm](https://github.com/tsybulkin/discovery/blob/master/docs/connection_states_diagram/connection_states_diagram.001.jpg)
+![Connection state diagramm](https://github.com/tsybulkin/discovery/blob/master/docs/connection_states_diagram.jpg)
 
 
 
@@ -172,17 +172,59 @@ diagram.
 - when it explores a new stable connection
 - when it looses a connection
 
+
 #### New connection
+
+If new stable connection is set, both nodes acts similar, so let us 
+consider just one node describing what happens next. In the following 
+diagram it is shown that box1 established a stable connection with box2:
+
+![New connection diagram ](https://github.com/tsybulkin/discovery/blob/master/docs/new_connection_diadram.jpg)
+
+Box1 will initiate two different types of update:
+- it sends an info about its new connection to all its port except the established one.
+- it sends an info about the whole network to newly established port
+
+The first broadcast is simple:
+
+```Erlang 
+{ <<"FFFFFF">>, Source_port, ND_type, {add_wire,TS,Box1,Port1,Port2,Box2} }
+```
+Where Source_port is its own port to which it sends a broadcast.
+
+The second broadcast is a group of broadcast packages, one packet per each wire of the network
+Box1 belongs to.
+
+Of course, the same wave of packets will come from its newly established neighbor about
+its network.
 
 
 #### Connection lost
 
+If box loses one of its connections it send a simple broadcast to all its ports and pushes
+TS to its broadcast archive.
+
+```Erlang 
+{ <<"FFFFFF">>, Source_port, ND_type, {del_wire,TS,Box1,Port1,Port2,Box2} }
+```
+
+Its neighbor sends a similar broadcast to its neighbors, so if boxes are connected
+to each other through other boxes' connections, each box in the network will receive
+two messages about the loss of connection. 
+
+There is a chance that network will split into two parts due to some connection loss.
+This is not a problem. We may check this running graph connectivity routine.
+
+Note. Graph connectivity is a computationally intensive problem that may require a
+significant amount of time to check connectivity of a large network. We should decide
+later how often we need to run it. Perhaps, we may run it after each connection loss.
+Alternatively, we may run it once per some period of time or when this info is needed.
 
 
 ### Receiving and transmitting broadcast packets
 
 When broadcast packet initiated by other nodes comes to Port_in, it is 
-checked if it has been shown already. 
+checked if it had been once shown already. 
 
 ```Erlang 
 { <<"FFFFFF">>, Source_port, ND_type, {BCM_type,TS, ...} }
