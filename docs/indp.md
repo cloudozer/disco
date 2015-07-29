@@ -124,12 +124,12 @@ A connection can be in one of four states shown in a table below:
 | Connection state	| Description 				|
 |:------------------|:--------------------------|
 | disconnected  	| There were no pongs from port during some predefined period |
-| unstable-diconnected | irregular pongs come from the port |
-| unstable-connected | The port was connected, however pongs got to come irregularly |
+| unstable-diconnected | irregular pongs come from previously disconnected port |
+| unstable-connected | The port was connected, however pongs are getting to come irregularly |
 | stable 			| regular pongs are coming from port |
 
 
-ND shares a change in its state with its neighbors only in two out of ten possible cases:
+ND shares a change in its state with its neighbors only in two (depicted in red) out of ten possible cases:
 
 - unstable-siconnected  ->  stable
 - unstanle-connected    ->  disconnected
@@ -165,7 +165,8 @@ There two BCM_types so far used for information sharing:
 
 ### Open questions
 
-1. The current version of the protocol assumes that a connection can be tested
+#### Pinging to test a connection
+The current version of the protocol assumes that a connection can be tested
 only by sending packets to a port and waiting for the response. Thus,
 we do not separate two different events:
 - disconneting nodes physically pluging off the wire from the port or swiching off
@@ -178,17 +179,16 @@ consequences caused by pluging wire off or turning whole box off.
 
 If these two events can be read figured out using other means, the protocol can be simplified a bit.
 
-
-2. The current implementation encountered an interesting behaivor which hinders to determine
+#### Bulky updates
+The current implementation encountered an interesting behaivor which hinders to determine
 if a box was known (or connected to the network) before a new connection was established.
 In other words it is not easy to determine whether a new connection leads to a merge of two
 disconnected networks or just a new connection between two boxes belonging to the same network.
 
-A simple solution that was implemented considers any new connection as a merge that induces a larger 
-wave of information update than it could be in the case when we add a new wire between two
-existing boxes in our network.
+A simple solution which has been implemented considers any new connection as a merge that induces a larger wave of information update than it could be in the case when we add a new wire between two
+existing boxes of our network.
 
-This is a disadvantage of a current implementation, which can be fixed later. It will require
+This is a disadvantage of the current implementation, which can be fixed later. It will require
 to add a handshake between wired boxes before they start sharing any information with each other and its neighbors.
 
 
