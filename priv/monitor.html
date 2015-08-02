@@ -6,16 +6,17 @@
 	<script type="text/javascript">
 
 	// width and height
-	var w = 400;
-	var h = 400;
+	var w = 800;
+	var h = 600;
+	var R = 12;
 
 	var net = {boxes:[],wires:[]};
 	var force = d3.layout.force()
 					.nodes(net.boxes)
 					.links(net.wires)
 					.size([w,h])
-					.linkDistance(60)
-					.charge(-500)
+					.linkDistance(30)
+					.charge(-100)
 					.start();
 	// create svg element
 	var svg = d3.select("body")
@@ -34,7 +35,7 @@
 					.data(net.boxes)
 					.enter()
 					.append("circle")
-					.attr("r",20)
+					.attr("r",R)
 					.style("fill","green")
 					.call(force.drag);				
 		
@@ -89,7 +90,7 @@
 					.data(net.boxes)
 					.enter()
 					.append("circle")
-					.attr("r",20)
+					.attr("r",R)
 					.style("fill","green")
 					.call(force.drag);
 
@@ -127,7 +128,7 @@
 						.data(net.boxes)
 		nodes.enter()
 			.append("circle")
-			.attr("r",20)
+			.attr("r",R)
 			.style("fill","green")
 			.call(force.drag);
 

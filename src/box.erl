@@ -30,74 +30,46 @@ box(Box,Ports,Links_pid) ->
 box(Box,Ports,Links_pid,Net_data,Arch,Monitor) ->
 	receive
 
-	%% Requests from my ports (BROADCASTs)
+	%% Requests from my ports
 
 		{new_connection, My_port, Neighbor_port,Neighbor_box } -> 
+			
 			io:format("  ~p: new_connection - ~p~n",[Box,Neighbor_box]),
-			%% check out if the connection is already known
-			case neph:neighbor(Box,My_port,Net_data) of
-				{Neighbor_port,Neighbor_box} ->  			%% do nothing
-					box(Box,Ports,Links_pid,Net_data,Arch,Monitor); 
-
-				not_connected ->
-					%% update database and broadcast to neighbors
-					Net_data1 = add_connection(Box,My_port,Neighbor_port,Neighbor_box,Net_data,Monitor),
-					
-					%% broadcast info about new wire
-					TS = os:timestamp(),
-					Pkt = {<<"FFFFFF">>,My_port,<<"ND">>,{add_wire,Box,My_port,Neighbor_port,Neighbor_box,TS} },	
-					broadcast(Ports,My_port,Links_pid,Pkt),
-					
-					%% checkout if the Neighbor box is a member of the network
-					%case neph:has_box(Neighbor_box,Net_data) of
-					%	true -> box(Box,Ports,Links_pid,Net_data1,[TS|Arch]);						
-					%		
-					%	false->	
-					%		%% send net_info to a new box
-					%		Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]),
-					%		box(Box,Ports,Links_pid,Net_data1,Arch1)
-					%end
-					
-					%% send entire net_info in any case
-					Arch1 = send_net_info(Box,My_port,Links_pid,Net_data,[TS|Arch]), 
-					box(Box,Ports,Links_pid,Net_data1,Arch1,Monitor)
-			end;
-
+			Net_data1 = add_connection(Box,My_port,Neighbor_port,Neighbor_box,Net_data,Monitor),
+			TS = os:timestamp(),
+			Pkt = {<<"FFFFFF">>,My_port,<<"ND">>,{connected,TS,Box,Neighbor_port,Neighbor_box} },	
+			broadcast(Ports,My_port,Links_pid,Pkt),
+			box(Box,Ports,Links_pid,Net_data1,[TS|Arch],Monitor);
+	
 		{lost_connection, My_port} ->
-			io:format("  ~p: lost connection in port ~p~n",[Box,My_port]),
-			%% check out if the connection is already removed
-			case neph:neighbor(Box,My_port,Net_data) of
-				not_connected ->  			%% do nothing
-					box(Box,Ports,Links_pid,Net_data,Arch,Monitor); 
+			io:format("  ~p: lost connection in port ~s~n",[Box,port:pp(My_port)]),
+			Net_data1 = del_connection(Box,My_port,Net_data,Monitor),
+			TS = os:timestamp(),
+			Pkt = {<<"FFFFFF">>,My_port,<<"ND">>,{disconnected,TS,Box} },	
+			broadcast(Ports,My_port,Links_pid,Pkt),			
+			box(Box,Ports,Links_pid,Net_data1,[TS|Arch],Monitor);
+			
+	%% Updates from the network
 
-				{Neighbor_port,Neighbor_box} ->
-					Net_data1 = del_connection(Box,My_port,Neighbor_port,Neighbor_box,Net_data,Monitor),
-					TS = os:timestamp(),
-					Pkt = {<<"FFFFFF">>,My_port,<<"ND">>,{del_wire,Box,My_port,Neighbor_port,Neighbor_box,TS} },	
-					broadcast(Ports,My_port,Links_pid,Pkt),
-							
+		{pkt,Port,{<<"FFFFFF">>,S_Port,<<"ND">>,{disconnected,TS,S_Box} }=Pkt } ->
+			case lists:member(TS,Arch) of
+				true -> 
+					box(Box,Ports,Links_pid,Net_data,Arch,Monitor);  %% old packet - stop broadcasting message
+				false ->
+					broadcast(Ports,Port,Links_pid,Pkt),
+					
+					Net_data1 = del_connection(S_Box,S_Port,Net_data,Monitor),
 					box(Box,Ports,Links_pid,Net_data1,[TS|Arch],Monitor)
 			end;
 
-
-		{pkt,Port,{<<"FFFFFF">>,_,<<"ND">>,{Add_Del_wire,Box1,Port1,Port2,Box2,TS} }=Pkt } ->
-			%io:format("~p: got broadcast - ~p~n",[Box,Pkt]),
+		{pkt,Port,{<<"FFFFFF">>,Port1,<<"ND">>,{connected,TS,Box1,Port2,Box2} }=Pkt } ->
 			case lists:member(TS,Arch) of
 				true -> 
-					io:format("Got the same broadcast in ~pms~n",[timer:now_diff(os:timestamp(),TS)/1000]),
 					box(Box,Ports,Links_pid,Net_data,Arch,Monitor);  %% old packet - stop broadcasting message
 				false ->
-					%% send message farther
 					broadcast(Ports,Port,Links_pid,Pkt),
 					
-					%% update info
-					Net_data1 = case Add_Del_wire of
-									add_wire -> add_connection(Box1,Port1,Port2,Box2,Net_data,Monitor);
-									del_wire -> del_connection(Box1,Port1,Port2,Box2,Net_data,Monitor);
-									_ -> io:format("ERROR: Wrong Broadcast command:~p~n",[Add_Del_wire]),
-										Net_data
-								end,
-			
+					Net_data1 = add_connection(Box1,Port1,Port2,Box2,Net_data,Monitor),
 					box(Box,Ports,Links_pid,Net_data1,[TS|Arch],Monitor)
 			end;	
 
@@ -125,9 +97,6 @@ box(Box,Ports,Links_pid,Net_data,Arch,Monitor) ->
 			%io:format("Boxes:~p~nWires:~p~n",[Boxes,Wires]),
 			Pid ! {entire_net,Boxes,Wires},
 			box(Box,Ports,Links_pid,Net_data,Arch,Pid)
-
-
-	%	_ -> box(Box,Ports,Links_pid,Net_data,Arch,Monitor)
 	end.
 
 
@@ -155,14 +124,17 @@ add_connection(Box1,Port1,Port2,Box2,Net_data,Monitor) ->
 
 %% delets the connection in Net_data and sends update to Monitor
 % returns new Net_data
-del_connection(Box1,Port1,Port2,Box2,Net_data,undef) -> 
-	neph:del_wire(Box1,Port1,Port2,Box2,Net_data);
-del_connection(Box1,Port1,Port2,Box2,Net_data,Monitor) ->
+del_connection(Box1,Port1,Net_data,Monitor) ->
 	case neph:neighbor(Box1,Port1,Net_data) of
-		{Port2,Box2} -> Monitor ! {del_wire,Box1,Box2};
-		_ -> ok
-	end,
-	neph:del_wire(Box1,Port1,Port2,Box2,Net_data).
+		{Port2,Box2} -> 
+			case Monitor of
+				undef -> ok;
+				_ -> Monitor ! {del_wire,Box1,Box2}
+			end,
+			neph:del_wire(Box1,Port1,Port2,Box2,Net_data);
+		not_connected -> 
+			Net_data
+	end.
 
 
 
@@ -181,22 +153,21 @@ broadcast(Ports_to_send,Port_not_send,Links_pid,Pkt) ->
 
 % sends out network info in a form of packets to a given port
 % returns a new Archive of sent broadcasts
-send_net_info(Box,Port,Links_pid,Net_data,Arch) ->
-	%io:format("broadcasting net info of ~p~n",[Box]),
-	bni([Box],Port,Links_pid,Net_data,Arch,[]).
-
-bni([Lead|Leads],Port,Links_pid,Net_data,Arch,Proc_boxes) ->
-	Neibs = [ {P1,P2,B} || {P1,P2,B} <- neph:neighbors(Lead,Net_data), not lists:member(B,Proc_boxes)],
-	Arch1 = lists:foldl(fun({P1,P2,B},Acc) ->
-			TS = os:timestamp(),
-			Pkt = {<<"FFFFFF">>,Port,<<"ND">>,{add_wire,Lead,P1,P2,B,TS}},
-			%io:format("broadcasting packet: ~p~n",[Pkt]),
-			Links_pid ! {pkt,Port,Pkt },
-			[TS|Acc] 
-						end, Arch, Neibs),
-	Boxes = lists:usort([ B || {_,_,B} <- Neibs]),
-	bni(Boxes++Leads,Port,Links_pid,Net_data,Arch1,[Lead|Proc_boxes]);
-bni([],_Port,_Links_pid,_Net_data,Arch,_Proc_boxes) -> Arch.
+%send_net_info(Box,Port,Links_pid,Net_data,Arch) ->
+%	%io:format("broadcasting net info of ~p~n",[Box]),
+%	bni([Box],Port,Links_pid,Net_data,Arch,[]).
+%
+%bni([Lead|Leads],Port,Links_pid,Net_data,Arch,Proc_boxes) ->
+%	Neibs = [ {P1,P2,B} || {P1,P2,B} <- neph:neighbors(Lead,Net_data), not lists:member(B,Proc_boxes)],
+%	Arch1 = lists:foldl(fun({P1,P2,B},Acc) ->
+%			TS = os:timestamp(),
+%			Pkt = {<<"FFFFFF">>,Port,<<"ND">>,{add_wire,Lead,P1,P2,B,TS}},
+%			Links_pid ! {pkt,Port,Pkt },
+%			[TS|Acc] 
+%						end, Arch, Neibs),
+%	Boxes = lists:usort([ B || {_,_,B} <- Neibs]),
+%	bni(Boxes++Leads,Port,Links_pid,Net_data,Arch1,[Lead|Proc_boxes]);
+%bni([],_Port,_Links_pid,_Net_data,Arch,_Proc_boxes) -> Arch.
 
 
 

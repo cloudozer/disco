@@ -10,7 +10,7 @@
 
 
 
-new() -> spawn(?MODULE,links,[dict:new()]).
+new() -> W = spawn(?MODULE,links,[dict:new()]), register(wh,W), W.
 
 
 links(Connections) ->
