@@ -4,6 +4,7 @@
 
 -module(nd).
 -export([run/1,
+		verify/2,
 		to_dot/1
 		]).
 
@@ -29,6 +30,44 @@ run(N) ->
 	Net1 = wire_boxes(W,M,Net),
 	to_dot(Net1),
 	Net1.
+
+
+
+
+verify(G,Net_data) ->
+	io:format("Verification started * * * * * * * *~n"),
+	N1 = dict:size(G),
+	N2 = neph:size(Net_data),
+
+	case N1 =:= N2 of
+		true -> io:format("Both graphs has the same number of nodes: ~p~n",[N1]);
+		false-> io:format("The real network consists of ~p boxes while~nbox1 discovered ~p boxes~n",[N1,N2])
+	end,
+
+	lists:foreach(fun(B) -> 
+					case neph:has_box(B,Net_data) of
+						false -> 
+							io:format("~p was not discovered along with its wires:~n~p~n",
+								[B,dict:fetch(B,G)]);
+						true ->
+							Golden = lists:sort(dict:fetch(B,G)),
+							Discovered = lists:sort(neph:neighbor_boxes(B,Net_data)),
+							case Golden == Discovered of
+								true -> ok;
+								false->
+									io:format("Neighbors of ~p do not conform:~n",[B]),
+									io:format("Ethalon: ~p~nDiscovered: ~p~n",[Golden,Discovered])
+							end
+					end
+				end,dict:fetch_keys(G)),
+
+	Redundant = sets:subtract(sets:from_list(neph:box_list(Net_data)),sets:from_list(dict:fetch_keys(G))),
+	lists:foreach(  fun(B) -> io: format("~p should not been descovered~n",[B])
+					end,sets:to_list(Redundant)).
+
+
+
+
 
 
 to_dot(Net) ->

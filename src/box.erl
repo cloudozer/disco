@@ -81,6 +81,10 @@ box(Box,Ports,Links_pid,Net_data,Arch,Monitor) ->
 			Pid ! {network_info,Info},
 			box(Box,Ports,Links_pid,Net_data,Arch,Monitor);
 
+		{get_net,Pid} ->
+			Pid ! Net_data,
+			box(Box,Ports,Links_pid,Net_data,Arch,Monitor);
+
 		{draw_net,_} ->
 			to_dot(Box,Net_data),
 			box(Box,Ports,Links_pid,Net_data,Arch,Monitor);
@@ -191,7 +195,7 @@ to_dot(Box,Net_data) ->
 
 							end,{[],[]},neph:box_list(Net_data)),
 
-	io:format("Edges:~p~n",[Edges]),
+	%io:format("Edges:~p~n",[Edges]),
 	lists:foreach(  fun({B1,B2}) ->
 
 		io:format(Dev,"\t~p -- ~p;~n",[B1,B2])
