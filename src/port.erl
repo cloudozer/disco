@@ -12,7 +12,7 @@
 
 -define(PING_INTERVAL,100).
 -define(PING_TIMEOUT,5000).
--define(PING_NBR, 7). 
+-define(PING_NBR, 5). 
 -define(HIGH_THR,0.7). % percentage of pongs coming back during some interval
 -define(LOW_THR, 0.3). % percentage of pongs coming back during some interval
  
@@ -85,6 +85,7 @@ port(State,Mac,Box,Links) ->
 		{<<"FFFFFF">>,_,<<"ND">>,_Msg }=Pkt ->
 			Box ! {pkt,Mac,Pkt},
 			port(State,Mac,Box,Links)
+
 
 	after
 		?PING_TIMEOUT ->

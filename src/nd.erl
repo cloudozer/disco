@@ -9,7 +9,7 @@
 		]).
 
 -define(NBR_PORTS,4).
--define(WIRING_DELAY,300).  % deleay in msec before wiring next boxes
+-define(WIRING_DELAY,500).  % deleay in msec before wiring next boxes
 -define(MAX_RAND_ATTEMPTS,10).
 
 
@@ -25,7 +25,7 @@ run(N) ->
 	%% generate edges and write a dot file
 	crypto:start(),
 	M = crypto:rand_uniform(round(1.6*N), 2*N),
-
+	timer:sleep(2000),
 	Net = dict:new(),
 	Net1 = wire_boxes(W,M,Net),
 	to_dot(Net1),
@@ -56,7 +56,7 @@ verify(G,Net_data) ->
 								true -> ok;
 								false->
 									io:format("Neighbors of ~p do not conform:~n",[B]),
-									io:format("Ethalon: ~p~nDiscovered: ~p~n",[Golden,Discovered])
+									io:format("  Ethalon: ~p~n  Discovered: ~p~n~n",[Golden,Discovered])
 							end
 					end
 				end,dict:fetch_keys(G)),
@@ -109,14 +109,18 @@ wire_boxes(W,M,Net) ->
 get_random_wire(_,?MAX_RAND_ATTEMPTS) -> false;
 get_random_wire(Ports,K) ->
 	N = length(Ports),
-	J1 = crypto:rand_uniform(1,N),
-	{Box1,P1} = lists:nth(J1,Ports),
-	J2 = crypto:rand_uniform(1,N),
-	{Box2,P2} = lists:nth(J2,Ports),
-	
-	case Box1 =:= Box2 of
-		true -> get_random_wire(Ports,K+1);
-		false-> {Box1,P1,P2,Box2}
+	case N < 2 of
+		true -> false;
+		false ->
+			J1 = random:uniform(N),
+			{Box1,P1} = lists:nth(J1,Ports),
+			J2 = random:uniform(N),
+			{Box2,P2} = lists:nth(J2,Ports),
+			
+			case Box1 =:= Box2 of
+				true -> get_random_wire(Ports,K+1);
+				false-> {Box1,P1,P2,Box2}
+			end
 	end.
 
 

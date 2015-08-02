@@ -25,7 +25,8 @@ new(Box,Ports_nbr,Links_pid) ->
 
 
 box(Box,Ports,Links_pid) -> 
-	box(Box,Ports,Links_pid,neph:new(Box),[],undef).
+	Net_data = neph:new(Box),
+	box(Box,Ports,Links_pid,Net_data,[],undef).
 
 box(Box,Ports,Links_pid,Net_data,Arch,Monitor) ->
 	receive
@@ -101,6 +102,21 @@ box(Box,Ports,Links_pid,Net_data,Arch,Monitor) ->
 			%io:format("Boxes:~p~nWires:~p~n",[Boxes,Wires]),
 			Pid ! {entire_net,Boxes,Wires},
 			box(Box,Ports,Links_pid,Net_data,Arch,Pid)
+	after
+		2000 ->
+			[Port|Rest] = Ports,
+			case neph:neighbor(Box,Port,Net_data) of
+				{Nei_port,Nei_box} ->
+					TS = os:timestamp(),
+					Pkt = {<<"FFFFFF">>,Port,<<"ND">>,{connected,TS,Box,Nei_port,Nei_box} },	
+					broadcast(Ports,[],Links_pid,Pkt),
+					box(Box,Rest++[Port],Links_pid,Net_data,[TS|Arch],Monitor);
+				not_connected ->
+					%TS = os:timestamp(),
+					%Pkt = {<<"FFFFFF">>,Port,<<"ND">>,{disconnected,TS,Box} },	
+					%broadcast(Ports,Port,Links_pid,Pkt)
+					box(Box,Rest++[Port],Links_pid,Net_data,Arch,Monitor)	
+			end
 	end.
 
 
