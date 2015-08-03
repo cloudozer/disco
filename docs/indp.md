@@ -4,9 +4,15 @@
 Date: July 20, 2015
 
 ### Status
-This is a draft document describing network discovery protocol which is a main 
-mean of how each server in IvanOS network can find out the network topology.
-The protocol is not complete. This is an initial phase of its development.
+A version 1.0 of the protocol got a significant change. The main point is in removing
+bulky updates when two networks are merged. In fact, there is one method to discover 
+neighbors - pinging, and one method to share information about discovered neighbors -
+broadcasting. An updates about losing a connection are removed. Each node may discover
+this itself by not having the corresponding updates. It means that all information about
+the network is expiring. New updates that a node gets refresh it. No updates about information
+make it expired.
+The protocol may need some small addition. It can be implemented as a stand alone application
+working on top of LINCX.
 
 
 ### History of changes
@@ -15,6 +21,7 @@ The protocol is not complete. This is an initial phase of its development.
 |:--------------|----------:|:--------------|:------------------|		
 | July 20, 2015	| 0.1 		| Ian Tsybulkin	| Draft 			|
 | July 29, 2015 | 0.2 		| Ian Tsybulkin | A basic version is complete. There are a few open questions that need to be answered before moving on |
+| August 3, 2015| 1.0 		| Ian Tsybulkin | A protocol was simplified; Bulky updates removed |
 
 
 ### Table of Contents
@@ -42,7 +49,7 @@ a network where every server is a computing node and a switch at the same time.
 It is assumed that every physical server is a node of the cloud that has all information about
 the network. IvanCloud can consist of a single box. There is no need to manually join different
 boxes in a network. Network discovery protocol described in this doc allows to find all nodes
-automatically.
+automatically and keep information about the network updated.
 
 
 ### Glossary
@@ -65,12 +72,13 @@ A wire connects to a box's port. Thus any connection looks like:
 
 Box1 - Port1 ---//--- Port2 - Box2
 
+A wire has exactly two ends connecting two boxes in a network.
 
 
 ### The Model
 
 A process which is a part of a distributed application may send a message to another process
-that may run in a different container  and on a different box. To deliver the message IvanOS
+that may run in a different container and on a different box. To deliver the message IvanOS
 should find a path between the two given boxes. The proposed model assumes that 
 network discovery app is a system application that runs on each box and constantly explores the network.
 So, this is the only source of information about the network for any other processes.
@@ -92,26 +100,25 @@ The format of the packet looks as it is shown below:
 
 ### Neighbors pinging
 
-ND constantly pings all its neighbors sending ping packets to all its ports.
+ND constantly pings all its neighbors sending ping-packets to all its ports.
 The Erlang format of ping packet is shown below. Later, when ND protocol 
-will stabilize the Erlang format will be changed to bit format.
+will stabilize the Erlang format will be changed to a bit format.
 
 ```Erlang
-{<<"FFFFFF">>, Source_port, ND_type, {ping, Box, TS} }
+{<<"FFFFFF">>, Source_port, ND_type, {ping, TS} }
 
 ```
 
-where the first two fields are MAC addresses, the third one is a special type of all ND protocol packets,
-Box is a source box name (ID), and TS is a time stamp.
+where the first two fields are MAC addresses, the third one is a special type of all ND protocol packets, and TS is a time stamp.
 
-If an ND app gets a ping packet from one of its neighbors, it responds sending pong packet back.
-Pong packet contains the same TS as it was in the ping packet while substituting its own 
+If an ND app gets a ping packet from one of its neighbors, it responds sending pong-packet back.
+pong-packet contains the same TS as it was in the ping-packet while adding its own 
 name in the My_box field. TS is a time stamp, so the box that sent ping can measure time of
 round trip of a ping packet.
 
 
 ```Erlang
-{Neighbor_port, My_port, ND_type, {pong, My_box, TS} } 
+{Neighbor_port, My_port, ND_type, {pong, TS, My_box} } 
 
 ```
 
@@ -119,7 +126,7 @@ round trip of a ping packet.
 ### State of connection
 
 Pinging neighbors is a primary information source allowing to evaluate a connection health. 
-If pongs go back on a regular base, the connection is healthy or stable.
+If pongs go back on a regular basis, the connection is healthy or stable.
 A connection can be in one of four states shown in a table below:
 
 
@@ -131,12 +138,16 @@ A connection can be in one of four states shown in a table below:
 | stable 			| regular pongs are coming from port |
 
 
-ND shares a change in its state with its neighbors only in two (depicted in red) out of ten possible cases:
+ND shares a change in its state from unstable-disconnected to a stable state at once the change in the state occur. 
 
-- unstable-disconnected  ->  stable
-- unstable-connected    ->  disconnected
+If there were no events in state change as described above, during some period of time (say 1 sec)
+ND broadcasts the state of a connection unless it is in disconnected state. The message looks like the following:
 
-A diagram showing all possible transitions between connection states depicted below:
+```Erlang
+{<<“FFFFFF”>>, SourcePort, <<“”ND””>>,  stable, TimeStamp, SourceBox, NeibPort, NeibBox}
+or
+{<<“FFFFFF”>>, SourcePort, <<“”ND””>>,  unstable, TimeStamp, SourceBox, NeibPort, NeibBox}
+```
 
 ![Connection state diagramm](https://github.com/tsybulkin/discovery/blob/master/docs/connection_states_diagram.jpg)
 
@@ -152,121 +163,35 @@ Any box may initiate a broadcast wave if a certain condition triggers this.
 A broadcast packet format is shown below:
 
 ```Erlang 
-{ <<"FFFFFF">>, Source_port, ND_type, {BCM_type,TS, ...} }
+{<<“FFFFFF”>>, SourcePort, <<“”ND””>>,  stable, TimeStamp, SourceBox, NeibPort, NeibBox}
 ```
 
-where: 
-BCM_type - one of possible broadcast message types;
-TS - time stamp of the message
+The first thing each box does when it receives a broadcast message is checking if it has already
+got this message. For that purpose ND keeps an archive of all broadcast messages it received
+during last 10 seconds or so. If a message is older than that, ND drops it as expired and irrelevant.
 
-There two BCM_types so far used for information sharing:
-
-	add_wire - a request to add a new connection between two boxes. 
-	del_wire - a request to delete the given connection
+Otherwise, it forwards it to the rest of its ports, adds its time stamp to its archive, 
+and then updates its database.
 
 
-### Initiating broadcast
+#### Initiating broadcast
 
 A node initiates a broadcast in one of two cases described above in the connection state
 diagram.
 - when it explores a new stable connection
-- when it looses a connection
+- when some time period passes.
 
 
-#### New connection
+### Archive
 
-If new stable connection is set, both nodes acts similar, so let us 
-consider just one node describing what happens next. In the following 
-diagram it is shown that box1 established a stable connection with box2:
-
-![New connection diagram ](https://github.com/tsybulkin/discovery/blob/master/docs/new_connection_diadram.jpg)
-
-Box1 will initiate two different types of update:
-- it sends an info about its new connection to all its port except the established one.
-- it sends an info about the whole network to newly established port
-
-The first broadcast is simple:
-
-```Erlang 
-{ <<"FFFFFF">>, Source_port, ND_type, {add_wire,TS,Box1,Port1,Port2,Box2} }
-```
-Where Source_port is its own port to which it sends a broadcast.
-
-The second broadcast is a group of broadcast packages, one packet per each wire of the network
-Box1 belongs to.
-
-Of course, the same wave of packets will come from its newly established neighbor about
-its network.
+ND maintains its archive keeping time stamps of all of its broadcasts during last 10 seconds or so.
+Archive looks like a queue. An old messages are cleaned up from one end and new come from the other end of the queue.
 
 
-#### Connection lost
+### Discovered graph
+It is a matter of each box to keep its discovered graph updated. It may regularly clean up the graph
+removing the nodes and edges which have no updates during some period of time.
 
-If box looses one of its connections it send a simple broadcast to all its ports and pushes
-TS to its broadcast archive.
-
-```Erlang 
-{ <<"FFFFFF">>, Source_port, ND_type, {del_wire,TS,Box1,Port1,Port2,Box2} }
-```
-
-Its neighbor sends a similar broadcast to its neighbors, so if boxes are connected
-to each other through other boxes' connections, each box in the network will receive
-two messages about the loss of connection. 
-
-There is a chance that network will split into two parts due to some connection loss.
-This is not a problem. We may check this running graph connectivity routine.
-
-Note. Graph connectivity is a computationally intensive problem that may require a
-significant amount of time to check connectivity of a large network. We should decide
-later how often we need to run it. Perhaps, we may run it after each connection loss.
-Alternatively, we may run it once per some period of time or when this info is needed.
-
-
-### Receiving and transmitting broadcast packets
-
-When broadcast packet initiated by other nodes comes to Port_in, it is 
-checked if it had been once shown already. 
-
-```Erlang 
-{ <<"FFFFFF">>, Source_port, ND_type, {BCM_type,TS, ...} }
-```
-
-For checking that its time stamp TS is used. 
-If broadcast archive contain that TS, the packet is dropped. Otherwise,
-ND reads the info, update its graph database and sends the packet further to
-all its ports except Port_in. TS is pushed to the broadcast archive.
-This guarantees that the packet reaches all the nodes in the network, but eventually
-be dropped by nodes which get it twice.
-
-
-### Open questions
-
-
-#### Pinging to test a connection
-The current version of the protocol assumes that a connection can be tested
-only by sending packets to a port and waiting for the response. Thus,
-we do not separate two different events:
-- a physical loss of connectivity between nodes and
-- a temporarily connection loss due to congestions, traffic jams, or any other reasons.
-
-To separate these two different types of problems with network connection we use two additional
-unstable states described in the State of connection section of this doc. 
-This helps us to separate short temporal problems from long-lasting 
-consequences caused by plugging the wire off or turning the whole box off. 
-
-If these two events can be explicitly and reliably separated on a physical level, the protocol can be simplified.
-
-
-#### Bulky updates
-The current implementation encountered an interesting behavior which hinders to determine
-if a box was known (or connected to the network) before a new connection was established.
-In other words it is not easy to determine whether a new connection leads to a merge of two
-disconnected networks or just a new connection between two boxes belonging to the same network.
-
-A simple solution which has been implemented considers any new connection as a merge that induces a larger wave of information update than it could be in the case when we add a new wire between two
-existing boxes of our network.
-
-This is a disadvantage of the current implementation, which can be fixed later. It will require
-to add a handshake between wired boxes before they start sharing any information with each other and its neighbors.
 
 
 
