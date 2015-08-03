@@ -36,35 +36,33 @@ run(N) ->
 
 verify(G,Net_data) ->
 	io:format("Verification started * * * * * * * *~n"),
-	N1 = dict:size(G),
-	N2 = neph:size(Net_data),
-
-	case N1 =:= N2 of
-		true -> io:format("Both graphs has the same number of nodes: ~p~n",[N1]);
-		false-> io:format("The real network consists of ~p boxes while~nbox1 discovered ~p boxes~n",[N1,N2])
-	end,
-
-	lists:foreach(fun(B) -> 
-					case neph:has_box(B,Net_data) of
-						false -> 
-							io:format("~p was not discovered along with its wires:~n~p~n",
-								[B,dict:fetch(B,G)]);
-						true ->
-							Golden = lists:sort(dict:fetch(B,G)),
-							Discovered = lists:sort(neph:neighbor_boxes(B,Net_data)),
-							case Golden == Discovered of
-								true -> ok;
-								false->
-									io:format("Neighbors of ~p do not conform:~n",[B]),
-									io:format("  Ethalon: ~p~n  Discovered: ~p~n~n",[Golden,Discovered])
-							end
+	Diff = 0,
+	Diff1 = lists:foldl(fun(B,Acc) -> 
+			case neph:has_box(B,Net_data) of
+				false -> 
+					io:format("~p was not discovered along with its wires:~n~p~n",
+						[B,dict:fetch(B,G)]),
+					Acc+1;
+				true ->
+					Golden = lists:sort(dict:fetch(B,G)),
+					Discovered = lists:sort(neph:neighbor_boxes(B,Net_data)),
+					case Golden == Discovered of
+						true -> Acc;
+						false->
+							io:format("Neighbors of ~p do not conform:~n",[B]),
+							io:format("  Ethalon: ~p~n  Discovered: ~p~n~n",[Golden,Discovered]),
+							Acc+1
 					end
-				end,dict:fetch_keys(G)),
+			end
+						end,Diff,dict:fetch_keys(G)),
 
 	Redundant = sets:subtract(sets:from_list(neph:box_list(Net_data)),sets:from_list(dict:fetch_keys(G))),
-	lists:foreach(  fun(B) -> io: format("~p should not been descovered~n",[B])
-					end,sets:to_list(Redundant)).
-
+	Diff2 = lists:foldl(fun(B,Acc) -> io: format("~p should not been descovered~n",[B]), Acc+1
+						end,Diff1, sets:to_list(Redundant)),
+	case Diff2 of
+		0 -> io:format("The network is equal to what has been discovered * * * * *~n");
+		_ -> io:format("~p differences were found between the real network and that which was dicovered * * *~n",[Diff2])
+	end.
 
 
 
