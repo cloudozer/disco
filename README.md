@@ -25,8 +25,8 @@ of network discovery protocol which should become one of basic capabilities of I
 First, clone the repo: 
 	
 ```
-git clone https://github.com/tsybulkin/discovery.git
-cd discovery
+git clone https://github.com/cloudozer/disco.git
+cd disco
 ```
 
 Then, compile the application and run it:
@@ -47,9 +47,9 @@ manipulating with wires, connecting or disconnecting boxes and so on.
 2> 
 ```
 
-W is a pid of an Erlang process that will help you control your network.
+W is the id of an Erlang process that will help you to control the emulated network.
 
-Then you may add new boxes. Each box must have a unique id. I recommend choosing a simple ids like
+Then, you may add new boxes. Each box must have a unique id. I recommend choosing a simple ids like
 box1, box2, and so on for simplicity reason. You also need to specify the number of ports
 the box has and an ID of the network hub:
 
@@ -82,12 +82,46 @@ There are a few commands you may use to manipulate with you network:
 
 |Command | Description |
 |:---|:---|
-|box:new(Box_id,Port_nbr,W)	| Box_id - a unique id; You may use atoms instead of numbers or strings. Port_nbr = integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
-|wire:free_ports(W)			| Returns a list of boxes' ports that are not connected at the moment |
-|wire:wires(W) 				| Shows all connection in the network 							|
-|W!{add_wire,Port1,Port2}	| Connects two given ports with a wire. If one or both ports are already connected, it ignores the command showing a warning 	|
-|W!{del_wire,Port1,Port2}	| Disconnect the given ports. If the ports are not connected with each other, it ignores the command showing a warning |
-|---|---|
+| box:new(Box_id,Port_nbr,W)| Box_id - a unique id; You may use atoms instead of numbers or strings. Port_nbr = integer > 0, specifying number of ports. W - a wire hub, the process for network manipulation |
+| wire:free_ports(W)		| Returns a list of boxes' ports that are not connected at the moment |
+| wire:wires(W) 			| Shows all connection in the network 							|
+| W ! {add_wire,Port1,Port2}| Connects two given ports with a wire. If one or both ports are already connected, it ignores the command showing a warning 	|
+| W ! {del_wire,Port1,Port2}| Disconnect the given ports. If the ports are not connected with each other, it ignores the command showing a warning |
+| wire:ask(Box_ID,get_net) 	| Returns the entire network discovered by Box_ID |
+
+## Generating random network
+
+You may generate a random network containing a given number of boxes. Each box in the network will have
+the following IDs: box1, box2, ... , boxN.
+It will be randomly wired assuming that each box has 4 ports, so any wire will connect two different boxes.
+It is possible to have more than one wire between two particular boxes.
+
+```Erlang
+1> nd:run(40).
+2>
+```
+
+The function above will generate a random network containing 40 boxes. The process of network generation
+can be observed if you attach a monitor to any network box, say box1.
+
+The function returns a undirected graph in a form of adjacency list. When the network is built you may
+find what a particular box discovered about the network. For that run:
+
+```Erlang
+3> wire:ask(box1,get_net).
+4>
+```
+
+This function returns a discoverd network in the form of adjacency list too, but with port information.
+To compare two graphs, an input one against a discovered one, run the following function:
+
+```Erlang
+5> nd:verify(G1,G2).
+6> 
+```
+
+Of course, before you need to assign to G1 and to G2 the values returning by nd:run(N) and wire:ask(box1,get_net) functions accordingly.
+
 
 
 
