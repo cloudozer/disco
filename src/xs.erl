@@ -13,7 +13,7 @@
 gen_rand_net(0) -> ok;
 gen_rand_net(N) ->
 	crypto:start(),
-	M = crypto:rand_uniform(round(0.4*?PORTS_NBR*N), round(0.5*?PORTS_NBR*N)),
+	M = 0.3 *?PORTS_NBR*N + random:uniform(round(0.2*?PORTS_NBR*N)),
 	io:format("Generating ~w wires~n",[M]),
 
 	Boxes = lists:foldl(fun(_,Acc)-> 
