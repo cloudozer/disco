@@ -171,27 +171,6 @@ broadcast(Ports_to_send,Port_not_send,Links_pid,Pkt) ->
 
 
 
-% sends out network info in a form of packets to a given port
-% returns a new Archive of sent broadcasts
-%send_net_info(Box,Port,Links_pid,Net_data,Arch) ->
-%	%io:format("broadcasting net info of ~p~n",[Box]),
-%	bni([Box],Port,Links_pid,Net_data,Arch,[]).
-%
-%bni([Lead|Leads],Port,Links_pid,Net_data,Arch,Proc_boxes) ->
-%	Neibs = [ {P1,P2,B} || {P1,P2,B} <- neph:neighbors(Lead,Net_data), not lists:member(B,Proc_boxes)],
-%	Arch1 = lists:foldl(fun({P1,P2,B},Acc) ->
-%			TS = os:timestamp(),
-%			Pkt = {<<"FFFFFF">>,Port,<<"ND">>,{add_wire,Lead,P1,P2,B,TS}},
-%			Links_pid ! {pkt,Port,Pkt },
-%			[TS|Acc] 
-%						end, Arch, Neibs),
-%	Boxes = lists:usort([ B || {_,_,B} <- Neibs]),
-%	bni(Boxes++Leads,Port,Links_pid,Net_data,Arch1,[Lead|Proc_boxes]);
-%bni([],_Port,_Links_pid,_Net_data,Arch,_Proc_boxes) -> Arch.
-
-
-
-
 to_dot(Box,Net_data) ->
 	if
 		is_atom(Box) -> File = atom_to_list(Box)++".dot";
