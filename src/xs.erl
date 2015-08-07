@@ -3,17 +3,28 @@
 %
 
 -module(xs).
--export([gen_rand_net/1
+-export([gen_rand_net/1,
+		save_net/1
 		]).
 
 -define(PORTS_NBR,4).
 -define(MAX_RAND_ATTEMPTS,5).
 
 
+
+save_net(Net) ->
+	xenstore:write("network-discovery",""),
+	dict:fold(  fun(Box,_Links,_Acc) ->
+					xenstore:write(port:pp(Box),""), undef
+				end,undef,Net).
+
+
+
+
 gen_rand_net(0) -> ok;
 gen_rand_net(N) ->
 	crypto:start(),
-	M = crypto:rand_uniform(round(0.4*?PORTS_NBR*N), round(0.5*?PORTS_NBR*N)),
+	M = random:uniform(round(0.4*?PORTS_NBR*N), round(0.5*?PORTS_NBR*N)),
 	io:format("Generating ~w wires~n",[M]),
 
 	Boxes = lists:foldl(fun(_,Acc)-> 
