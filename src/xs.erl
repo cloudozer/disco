@@ -16,7 +16,7 @@ save_net(Net) ->
 	Home = "/network-discovery",
 	xenstore:write(Home,""),
 	dict:fold(  fun(Box,_Links,_Acc) ->
-					xenstore:write(Home++port:pp(Box),""), undef
+					xenstore:write(Home++port:pp(Box),"")
 				end,undef,Net).
 
 
