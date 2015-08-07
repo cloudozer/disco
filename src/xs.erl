@@ -16,8 +16,8 @@ save_net(Net) ->
 	Home = "data/network-discovery",
 	xenstore:write(Home,""),
 	dict:fold(  fun(Box,_Links,_Acc) ->
-					io:format("~p~n",[Home++"/"++port:pp(Box)]),
-					xenstore:write(Home++"/"++port:pp(Box),"")
+					io:format("~p~n",[Home++"/"++pp(Box)]),
+					xenstore:write(Home++"/"++pp(Box),"")
 				end,undef,Net).
 
 
@@ -77,4 +77,20 @@ get_random_wire(Boxes,K) ->
 			end
 	end.
 
+
+
+pp(<<P1,P2,P3,P4,P5,P6>>) -> 
+	byte_to_hex(P1)++"-"++byte_to_hex(P2)++"-"++
+	byte_to_hex(P3)++"-"++byte_to_hex(P4)++"-"++
+	byte_to_hex(P5)++"-"++byte_to_hex(P6). 
+
+
+
+
+byte_to_hex(B) ->
+	S = integer_to_list(B,16),
+	case length(S) of
+		2 -> S;
+		1 -> [$0|S]
+	end.
 
