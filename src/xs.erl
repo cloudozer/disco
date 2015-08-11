@@ -14,13 +14,25 @@
 
 
 fetch_boxes() ->
-	[].
+	case xenstore:list(?HOME) of
+		{ok,Ls} -> Ls;
+		{error,Err} -> error(Err)
+	end.
+
 
 fetch(Box1) ->
-	[].
+	case xenstore:list(?HOME++"/"++Box1) of
+		{ok,Ls} -> 
+			Ports = [ P || [_,_,$-,_,_,$-,_,_,$-,_,_,$-,_,_,$-,_,_]=P <- Ls ],
+			lists:foldl(fun(P,Acc)-> 
+						{ok,Link} = xenstore:read(?HOME++"/"++Box1++"/"++P),
+						[{P,lists:sublist(Link,17),lists:sublist(Link,19,17)}|Acc]
+						end,[],Ports);
+		{error,Err} -> error(Err)
+	end.
 
 
-size() -> 0.
+size() -> length(fetch_boxes()).
 
 
 
