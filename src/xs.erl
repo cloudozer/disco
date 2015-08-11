@@ -37,6 +37,7 @@ size() -> length(fetch_boxes()).
 
 
 save_net(Net) ->
+	xenstore:delete(?HOME),
 	xenstore:write(?HOME,""),
 	lists:foreach(   fun(Box) ->
 					xenstore:write(?HOME++"/"++pp(Box),""),
