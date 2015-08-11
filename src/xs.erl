@@ -15,7 +15,7 @@
 save_net(Net) ->
 	Home = "data/network-discovery",
 	xenstore:write(Home,""),
-	lists:foeach(   fun(Box) ->
+	lists:foreach(   fun(Box) ->
 					xenstore:write(Home++"/"++pp(Box),""),
 					Links = dict:fetch(Box,Net),
 					lists:foreach(  fun({P1,P2,Box2}) -> 
