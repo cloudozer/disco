@@ -15,10 +15,16 @@
 save_net(Net) ->
 	Home = "data/network-discovery",
 	xenstore:write(Home,""),
-	dict:fold(  fun(Box,_Links,_Acc) ->
-					io:format("~p~n",[Home++"/"++pp(Box)]),
-					xenstore:write(Home++"/"++pp(Box),"")
-				end,undef,Net).
+	lists:foeach(   fun(Box) ->
+					xenstore:write(Home++"/"++pp(Box),""),
+					Links = dict:fetch(Box,Net),
+					lists:foreach(  fun({P1,P2,Box2}) -> 
+									xenstore:write(Home++"/"++pp(Box)++"/"++pp(P1),pp(P2)++"|"++pp(Box2)),
+									end, Links),
+					xenstore:write(Home++"/"++pp(Box)++"cores",8),
+					xenstore:write(Home++"/"++pp(Box)++"RAM",32),
+					xenstore:write(Home++"/"++pp(Box)++"Free_mem",24)
+					end,undef,dict:fetch_keys(Net) ).
 
 
 
