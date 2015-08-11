@@ -24,7 +24,7 @@ save_net(Net) ->
 					xenstore:write(Home++"/"++pp(Box)++"cores",8),
 					xenstore:write(Home++"/"++pp(Box)++"RAM",32),
 					xenstore:write(Home++"/"++pp(Box)++"Free_mem",24)
-					end,undef,dict:fetch_keys(Net) ).
+					end,dict:fetch_keys(Net) ).
 
 
 
