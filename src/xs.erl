@@ -4,28 +4,38 @@
 
 -module(xs).
 -export([
+		fetch_boxes/0, fetch/1, size/0,
 		save_net/1,
 		pp/1
 		]).
 
+-define(HOME,"data/network-discovery").
 
 
+
+fetch_boxes() ->
+	[].
+
+fetch(Box1) ->
+	[].
+
+
+size() -> 0.
 
 
 
 save_net(Net) ->
-	Home = "data/network-discovery",
-	xenstore:write(Home,""),
+	xenstore:write(?HOME,""),
 	lists:foreach(   fun(Box) ->
-					xenstore:write(Home++"/"++pp(Box),""),
+					xenstore:write(?HOME++"/"++pp(Box),""),
 					Links = dict:fetch(Box,Net),
 					lists:foreach(  fun({P1,P2,Box2}) -> 
-									xenstore:write(Home++"/"++pp(Box)++"/"++pp(P1),pp(P2)++"|"++pp(Box2))
+									xenstore:write(?HOME++"/"++pp(Box)++"/"++pp(P1),pp(P2)++"|"++pp(Box2))
 									end, Links),
-					xenstore:write(Home++"/"++pp(Box)++"/cores",8),
-					xenstore:write(Home++"/"++pp(Box)++"/RAM",32),
-					xenstore:write(Home++"/"++pp(Box)++"/Free_mem",24)
-					end,dict:fetch_keys(Net) ).
+					xenstore:write(?HOME++"/"++pp(Box)++"/cores",8),
+					xenstore:write(?HOME++"/"++pp(Box)++"/RAM",32),
+					xenstore:write(?HOME++"/"++pp(Box)++"/Free_mem",24)
+					end, dict:fetch_keys(Net) ).
 
 
 
