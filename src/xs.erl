@@ -45,8 +45,8 @@ save_net(Net) ->
 					lists:foreach(  fun({P1,P2,Box2}) -> 
 									xenstore:write(?HOME++"/"++pp(Box)++"/"++pp(P1),pp(P2)++"|"++pp(Box2))
 									end, Links),
-					xenstore:write(?HOME++"/"++pp(Box)++"/cores",8),
-					xenstore:write(?HOME++"/"++pp(Box)++"/RAM",32),
+					%xenstore:write(?HOME++"/"++pp(Box)++"/cores",8),
+					%xenstore:write(?HOME++"/"++pp(Box)++"/RAM",32),
 					xenstore:write(?HOME++"/"++pp(Box)++"/Free_mem",24)
 					end, dict:fetch_keys(Net) ).
 
