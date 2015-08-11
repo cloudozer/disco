@@ -19,7 +19,7 @@ save_net(Net) ->
 					xenstore:write(Home++"/"++pp(Box),""),
 					Links = dict:fetch(Box,Net),
 					lists:foreach(  fun({P1,P2,Box2}) -> 
-									xenstore:write(Home++"/"++pp(Box)++"/"++pp(P1),pp(P2)++"|"++pp(Box2)),
+									xenstore:write(Home++"/"++pp(Box)++"/"++pp(P1),pp(P2)++"|"++pp(Box2))
 									end, Links),
 					xenstore:write(Home++"/"++pp(Box)++"cores",8),
 					xenstore:write(Home++"/"++pp(Box)++"RAM",32),
