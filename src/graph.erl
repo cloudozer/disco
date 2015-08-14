@@ -24,7 +24,7 @@ main(N) ->
 	io:format("connectivity checking took ~p us~n",[T1]),
 
 	xs:save_net(Net),
-	{T2,Connected2} = timer:tc(?MODULE,check_conn_xsw,[]),
+	{T2,Connected2} = timer:tc(?MODULE,check_conn_xs,[]),
 	case Connected2 of
 		true -> io:format("Network connected entirely~n");
 		false-> io:format("Network consists of a few disconnected subnetworks~n")
