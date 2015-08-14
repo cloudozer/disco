@@ -5,7 +5,7 @@
 -module(graph).
 -export([gen_rand_net/1,
 		main/1,
-		check_connectivity/0, check_connectivity/1
+		check_conn_xs/0, check_conn_di/0
 		]).
 
 -define(PORTS_NBR,4).
@@ -15,7 +15,8 @@
 
 main(N) ->
 	Net = gen_rand_net(N),
-	{T1,Connected1} = timer:tc(?MODULE,check_connectivity,[Net]),
+	di:save_net(Net),
+	{T1,Connected1} = timer:tc(?MODULE,check_conn_di,[]),
 	case Connected1 of
 		true -> io:format("Network connected entirely~n");
 		false-> io:format("Network consists of a few disconnected subnetworks~n")
@@ -23,7 +24,7 @@ main(N) ->
 	io:format("connectivity checking took ~p us~n",[T1]),
 
 	xs:save_net(Net),
-	{T2,Connected2} = timer:tc(?MODULE,check_connectivity,[]),
+	{T2,Connected2} = timer:tc(?MODULE,check_conn_xsw,[]),
 	case Connected2 of
 		true -> io:format("Network connected entirely~n");
 		false-> io:format("Network consists of a few disconnected subnetworks~n")
@@ -33,12 +34,12 @@ main(N) ->
 
 
 
-check_connectivity() -> % checks connectivity of xenstore database
+check_conn_xs() -> % checks connectivity of xenstore database
 	[Box|_] = xs:fetch_boxes(),
 	Visited = sets:new(),
-	check_connectivity([Box],Visited).
+	check_conn_xs([Box],Visited).
 
-check_connectivity([Box|To_visit],Visited) ->	
+check_conn_xs([Box|To_visit],Visited) ->	
 	To_visit1 = 
 	lists:foldl(fun({_,_,B},Acc) -> 
 				case sets:is_element(B,Visited) of
@@ -50,17 +51,17 @@ check_connectivity([Box|To_visit],Visited) ->
 						end
 				end
 				end, To_visit, xs:fetch(Box)),
-	check_connectivity(To_visit1,sets:add_element(Box,Visited));
-check_connectivity([],Visited) -> sets:size(Visited) =:= xs:size().
+	check_conn_xs(To_visit1,sets:add_element(Box,Visited));
+check_conn_xs([],Visited) -> sets:size(Visited) =:= xs:size().
 	
 
 
-check_connectivity(Net) ->
-	[Box|_] = dict:fetch_keys(Net),
+check_conn_di() ->
+	[Box|_] = di:fetch_keys(),
 	Visited = sets:new(),
-	check_connectivity(Net,[Box],Visited).
+	check_conn_di([Box],Visited).
 
-check_connectivity(Net,[Box|To_visit],Visited) ->	
+check_conn_di([Box|To_visit],Visited) ->	
 	To_visit1 = 
 	lists:foldl(fun({_,_,B},Acc) -> 
 				case sets:is_element(B,Visited) of
@@ -71,9 +72,9 @@ check_connectivity(Net,[Box|To_visit],Visited) ->
 							true -> Acc
 						end
 				end
-				end, To_visit, dict:fetch(Box,Net)),
-	check_connectivity(Net,To_visit1,sets:add_element(Box,Visited));
-check_connectivity(Net,[],Visited) -> sets:size(Visited) =:= dict:size(Net).
+				end, To_visit, di:fetch(Box)),
+	check_conn_di(To_visit1,sets:add_element(Box,Visited));
+check_conn_di([],Visited) -> sets:size(Visited) =:= di:size().
 	
 
 
