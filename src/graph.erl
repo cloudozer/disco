@@ -5,7 +5,7 @@
 -module(graph).
 -export([gen_rand_net/1,
 		main/1,
-		check_conn_xs/0, check_conn_di/0
+		check_conn_xs/0, check_conn_di/0, check_conn_et/1
 		]).
 
 -define(PORTS_NBR,4).
@@ -21,15 +21,15 @@ main(N) ->
 		true -> io:format("Network connected entirely~n");
 		false-> io:format("Network consists of a few disconnected subnetworks~n")
 	end,
-	io:format("connectivity checking took ~p us~n",[T1]),
+	io:format("Dict connectivity checking took ~p us~n",[T1]),
 
-	xs:save_net(Net),
-	{T2,Connected2} = timer:tc(?MODULE,check_conn_xs,[]),
+	Tid = et:save_net(Net),
+	{T2,Connected2} = timer:tc(?MODULE,check_conn_et,[Tid]),
 	case Connected2 of
 		true -> io:format("Network connected entirely~n");
 		false-> io:format("Network consists of a few disconnected subnetworks~n")
 	end,
-	io:format("connectivity checking took ~p us~n",[T2]).
+	io:format("ETS connectivity checking took ~p us~n",[T2]).
 	
 
 
@@ -76,6 +76,27 @@ check_conn_di([Box|To_visit],Visited) ->
 	check_conn_di(To_visit1,sets:add_element(Box,Visited));
 check_conn_di([],Visited) -> sets:size(Visited) =:= di:size().
 	
+
+
+check_conn_et(Tid) ->
+	[Box|_] = et:fetch_keys(Tid),
+	Visited = sets:new(),
+	check_conn_et(Tid,[Box],Visited).
+
+check_conn_et(Tid,[Box|To_visit],Visited) ->	
+	To_visit1 = 
+	lists:foldl(fun({_,_,B},Acc) -> 
+				case sets:is_element(B,Visited) of
+					true -> Acc;
+					false-> 
+						case lists:member(B,Acc) of
+							false->[B|Acc];
+							true -> Acc
+						end
+				end
+				end, To_visit, et:fetch(Box,Tid)),
+	check_conn_et(Tid,To_visit1,sets:add_element(Box,Visited));
+check_conn_et(Tid,[],Visited) -> sets:size(Visited) =:= et:size(Tid).
 
 
 
